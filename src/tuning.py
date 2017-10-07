@@ -23,14 +23,14 @@ def parse_args():
 
 def main(config):
     if config.model in ["mdrn"]:
-       config.batch_size = 32
-       config.patch_size = 96*config.scale
+       config.batch_size = 64
+       config.patch_size = 48*config.scale
     
-    lr_list = [0.01, 0.005, 0.004, 0.003, 0.002, 0.001, 0.0005, 0.0004, 0.0003, 0.0002, 0.0001]
+    lr_list = [0.005, 0.004, 0.003, 0.002, 0.001, 0.0005, 0.0004, 0.0003, 0.0002, 0.0001]
     for lr in lr_list:
         config.lr = lr
         config.decay = 10000
-        config.max_epoch = 500
+        config.max_epoch = 200
         config.verbose = False
 
         trainer = Trainer(config)

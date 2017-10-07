@@ -40,18 +40,55 @@ class MeanShift(nn.Module):
         return x
 
 class BasicModule(nn.Module):
-    def __init__(self, conv, bn=False, act=nn.ReLU(True)):
+    def __init__(self, nFeat, bn=False, act=nn.ReLU(True)):
         super(BasicModule, self).__init__()
 
-        modules = [conv]
+        self.modules = [nn.Conv2d(nFeat, nFeat, 3, 1, 1)]
         if bn:
-            self.modules.append[nn.BatchNorm2d(conv.out_channels)]
+            self.modules += [nn.BatchNorm2d(nFeat)]
         if act is not None:
-            self.modules.append[act]
+            self.modules += [act]
         self.body = nn.Sequential(*self.modules)
 
     def forward(self, x):
-        x = self.body(x)
+        out = self.body(x)
+
+        return out
+        
+class BTResBlock(nn.Module):
+    def __init__(self, nFeat, nBTFeat, kernel_size=3, dilation=1, bn=False, act=nn.ReLU(True)):
+        super(BTResBlock, self).__init__()
+
+        if dilation == 1: 
+            padding = 1
+        elif dilation == 2: 
+            padding = 2
+
+        modules = []
+        modules.append(nn.Conv2d(
+            nFeat, nBTFeat, kernel_size=1))
+        if bn:
+            modules.append(nn.BatchNorm2d(nFeat))
+        modules.append(act)
+
+        modules.append(nn.Conv2d(
+            nBTFeat, nBTFeat, kernel_size=3, dilation=dilation, padding=padding))
+        if bn:
+            modules.append(nn.BatchNorm2d(nFeat))
+        modules.append(act)
+
+        modules.append(nn.Conv2d(
+            nBTFeat, nFeat, kernel_size=3, dilation=dilation, padding=padding))
+        if bn:
+            modules.append(nn.BatchNorm2d(nFeat))
+        self.body = nn.Sequential(*modules)
+
+    def forward(self, x):
+        res = self.body(x)
+        res *= 0.1
+        res += x
+
+        return res
 
 class ResBlock(nn.Module):
     def __init__(self, nFeat, kernel_size=3, bn=False, act=nn.ReLU(True)):

@@ -106,8 +106,8 @@ class Trainer():
         config = self.config
         mean_psnr = 0
         for step, inputs in enumerate(self.test_loader):
-            hr = Variable(inputs[0], requires_grad=False)
-            lr = Variable(inputs[1], requires_grad=False)
+            hr = Variable(inputs[0], volatile=True)
+            lr = Variable(inputs[1], volatile=True)
 
             if config.cuda:
                 hr, lr = hr.cuda(), lr.cuda()

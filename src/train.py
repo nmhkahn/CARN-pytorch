@@ -24,16 +24,16 @@ def parse_args():
 
 def main(config):
     if config.model in ["mdrn"]:
-        config.max_epoch = 6000
-        config.decay = 4000
-        config.batch_size = 32
+        config.max_epoch = 3000
+        config.decay = 2000
+        config.batch_size = 64
         config.patch_size = 48*config.scale
         config.lr = 0.0001
         config.verbose = True
     if config.model in ["edsr"]:
-        config.max_epoch = 6000
-        config.decay = 4000
-        config.batch_size = 32
+        config.max_epoch = 3000
+        config.decay = 2000
+        config.batch_size = 64
         config.patch_size = 48*config.scale
         config.lr = 0.0001
         config.verbose = True
