@@ -30,16 +30,9 @@ def main(config):
         config.patch_size = 48*config.scale
         config.lr = 0.0001
         config.verbose = True
-    if config.model in ["edsr"]:
-        config.max_epoch = 4000
-        config.decay = 2000
-        config.batch_size = 64
-        config.patch_size = 48*config.scale
-        config.lr = 0.0001
-        config.verbose = True
     
-    trainer = Trainer(config)
     print(json.dumps(vars(config), indent=4, sort_keys=True))
+    trainer = Trainer(config)
     trainer.fit()
 
 if __name__ == "__main__":
