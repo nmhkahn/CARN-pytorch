@@ -1,50 +1,45 @@
-from model import common
-
 import torch.nn as nn
+import torch.nn.init as init
+from model import ops
 
 class MDRN(nn.Module):
     def __init__(self, scale):
         super(MDRN, self).__init__()
-        nResBlock = 33
-        nFeat = 256
-        nBTFeat = 192
+        n_dims = 96
+        n_btn_dims = 64
         scale = scale
 
-        self.subMean = common.MeanShift((0.4488, 0.4371, 0.4040))
+        self.sub_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=True)
+        self.add_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=False)
 
-        # Head convolution for feature extracting
-        self.headConv = common.conv3x3(3, nFeat)
+        self.entry = nn.Conv2d(3, n_dims, 3, 1, 1)
+        self.blocks = nn.Sequential(
+            *[ops.BtnResBlock(n_dims, n_btn_dims, dilation=1) for _ in range(12)],
+            *[ops.BtnBasicBlock(n_dims, n_btn_dims)],
+            *[ops.BtnResBlock(n_dims, n_btn_dims, dilation=1) for _ in range(6)],
+            *[ops.BtnBasicBlock(n_dims, n_btn_dims)],
+            *[ops.BtnResBlock(n_dims, n_btn_dims, dilation=1) for _ in range(6)],
+            *[ops.BtnBasicBlock(n_dims, n_btn_dims)],
+            *[ops.BtnResBlock(n_dims, n_btn_dims, dilation=1) for _ in range(12)],
+            *[ops.BtnBasicBlock(n_dims, n_btn_dims)],
+            nn.Conv2d(n_dims, n_dims, 3, 1, 1),
+        )
+        self.upsample = ops.UpsampleBlock(n_dims, scale)
+        self.exit = nn.Conv2d(n_dims, 3, 3, 1, 1)
 
-        # Main branch
-        modules = []
-        modules += [common.BTResBlock(nFeat, nBTFeat, dilation=1) for _ in range(10)]
-        modules += [common.BasicModule(256) for _ in range(2)]
-        modules += [common.BTResBlock(nFeat, nBTFeat, dilation=2) for _ in range(5)]
-        modules += [common.BasicModule(256) for _ in range(2)]
-        modules += [common.BTResBlock(nFeat, nBTFeat, dilation=2) for _ in range(5)]
-        modules += [common.BasicModule(256) for _ in range(2)]
-        modules += [common.BTResBlock(nFeat, nBTFeat, dilation=1) for _ in range(10)]
-        modules += [common.BasicModule(256) for _ in range(4)]
-        modules.append(common.conv3x3(nFeat, nFeat))
-        self.body = nn.Sequential(*modules)
-
-        # Upsampler
-        self.upsample = common.Upsampler(scale, nFeat)
-
-        # Tail convolution for reconstruction
-        self.tailConv = common.conv3x3(nFeat, 3)
-
-        self.addMean = common.MeanShift((0.4488, 0.4371, 0.4040))
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                init.kaiming_normal(module.weight)
 
     def forward(self, x):
-        x = self.subMean(x)
-        x = self.headConv(x)
+        x = self.sub_mean(x)
+        x = self.entry(x)
 
-        res = self.body(x)
-        res += x
+        mid = self.blocks(x)
+        mid += x
 
-        us = self.upsample(res)
-        output = self.tailConv(us)
-        output = self.addMean(output)
+        up = self.upsample(mid)
+        out = self.exit(up)
+        out = self.add_mean(out)
 
-        return output
+        return out

@@ -16,7 +16,7 @@ def parse_args():
                         default="checkpoint")
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument("--num_gpu", type=int,
-                        default=2)
+                        default=1)
     parser.add_argument("--scale", type=int,
                         default=2)
 
@@ -24,14 +24,14 @@ def parse_args():
 
 def main(config):
     if config.model in ["mdrn"]:
-        config.max_epoch = 3000
+        config.max_epoch = 4000
         config.decay = 2000
         config.batch_size = 64
         config.patch_size = 48*config.scale
         config.lr = 0.0001
         config.verbose = True
     if config.model in ["edsr"]:
-        config.max_epoch = 3000
+        config.max_epoch = 4000
         config.decay = 2000
         config.batch_size = 64
         config.patch_size = 48*config.scale
