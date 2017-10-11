@@ -19,9 +19,9 @@ class Trainer():
         if config.model in ["mdrn"]:
             from model.mdrn import MDRN
             self.refiner = MDRN(config.scale)
-        elif config.model in ["edsr"]:
-            from model.edsr import EDSR
-            self.refiner = EDSR(config.scale)
+        elif config.model in ["mdrn_v2"]:
+            from model.mdrn_v2 import MDRN
+            self.refiner = MDRN(config.scale)
 
         self.loss_fn = nn.L1Loss()
         self.opt = optim.Adam(

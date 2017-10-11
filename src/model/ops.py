@@ -94,6 +94,56 @@ class BtnResBlock(nn.Module):
         return out
 
 
+class BtnMDResBlock(nn.Module):
+    def __init__(self, 
+                 n_dims, n_branch_dims, n_branch_btn_dims,
+                 act=nn.LeakyReLU(0.1, True)):
+        super(BtnMDResBlock, self).__init__()
+        
+        pad = dilation = [1, 2, 3]
+        n_bd, n_bbd = n_branch_dims, n_branch_btn_dims
+
+        self.branch0 = nn.Sequential(
+            nn.Conv2d(n_dims, n_bbd[0], 1, 1, 0),
+            act,
+            nn.Conv2d(n_bbd[0], n_bbd[0], 3, 1, pad[0], dilation=dilation[0]),
+            act,
+            nn.Conv2d(n_bbd[0], n_bd[0], 3, 1, pad[0], dilation=dilation[0]),
+            act
+        )
+        
+        self.branch1 = nn.Sequential(
+            nn.Conv2d(n_dims, n_bbd[1], 1, 1, 0),
+            act,
+            nn.Conv2d(n_bbd[1], n_bbd[1], 3, 1, pad[1], dilation=dilation[1]),
+            act,
+            nn.Conv2d(n_bbd[1], n_bd[1], 3, 1, pad[1], dilation=dilation[1]),
+            act
+        )
+        
+        self.branch2 = nn.Sequential(
+            nn.Conv2d(n_dims, n_bbd[2], 1, 1, 0),
+            act,
+            nn.Conv2d(n_bbd[2], n_bbd[2], 3, 1, pad[2], dilation=dilation[2]),
+            act,
+            nn.Conv2d(n_bbd[2], n_bd[2], 3, 1, pad[2], dilation=dilation[2]),
+            act
+        )
+
+        self.exit = nn.Conv2d(n_dims, n_dims, 1, 1, 0)
+        
+        init_weights(self.modules)
+
+    def forward(self, x):
+        branch0 = self.branch0(x)
+        branch1 = self.branch1(x)
+        branch2 = self.branch2(x)
+
+        cat = torch.cat((branch0, branch1, branch2), dim=1)
+        out = self.exit(cat) + x
+        return out
+
+
 class UpsampleBlock(nn.Module):
     def __init__(self, n_dims, scale, act=False):
         super(UpsampleBlock, self).__init__()

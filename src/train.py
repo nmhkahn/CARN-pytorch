@@ -23,7 +23,7 @@ def parse_args():
     return parser.parse_args()
 
 def main(config):
-    if config.model in ["mdrn"]:
+    if config.model in ["mdrn", "mdrn_v2"]:
         config.max_epoch = 4000
         config.decay = 2000
         config.batch_size = 64
