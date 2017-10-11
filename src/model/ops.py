@@ -1,13 +1,24 @@
 import math
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 from torch.autograd import Variable
+
+def init_weights(modules):
+    for m in modules():
+        if isinstance(m, nn.Conv2d):
+            n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            gain = init.calculate_gain("leaky_relu", 0.2)
+            std = gain / math.sqrt(n)
+            bound = math.sqrt(1.0) * std
+            m.weight.data.uniform_(-bound, bound)
+
 
 class MeanShift(nn.Module):
     def __init__(self, mean_rgb, sub):
         super(MeanShift, self).__init__()
-        sign = -1 if sub else 1
 
+        sign = -1 if sub else 1
         r = mean_rgb[0] * sign
         g = mean_rgb[1] * sign
         b = mean_rgb[2] * sign
@@ -28,7 +39,7 @@ class MeanShift(nn.Module):
 class BtnBasicBlock(nn.Module):
     def __init__(self, 
                  n_dims, n_btn_dims, 
-                 dilation=1, act=nn.LeakyReLU(0.1, True)):
+                 dilation=1, act=nn.LeakyReLU(0.2, True)):
         super(BtnBasicBlock, self).__init__()
 
         if dilation == 1:
@@ -46,6 +57,8 @@ class BtnBasicBlock(nn.Module):
             nn.Conv2d(n_btn_dims, n_dims, 3, 1, pad, dilation=dilation),
             act
         )
+
+        init_weights(self.modules)
         
     def forward(self, x):
         out = self.body(x)
@@ -55,7 +68,7 @@ class BtnBasicBlock(nn.Module):
 class BtnResBlock(nn.Module):
     def __init__(self, 
                  n_dims, n_btn_dims,
-                 dilation=1, act=nn.LeakyReLU(0.1, True)):
+                 dilation=1, act=nn.LeakyReLU(0.2, True)):
         super(BtnResBlock, self).__init__()
 
         if dilation == 1:
@@ -73,7 +86,9 @@ class BtnResBlock(nn.Module):
             nn.Conv2d(n_btn_dims, n_dims, 3, 1, pad, dilation=dilation),
             act
         )
-
+        
+        init_weights(self.modules)
+        
     def forward(self, x):
         out = self.body(x) + x
         return out
@@ -97,6 +112,8 @@ class UpsampleBlock(nn.Module):
                 modules += [act]
         self.body = nn.Sequential(*modules)
 
+        init_weights(self.modules)
+        
     def forward(self, x):
         out = self.body(x)
         return out

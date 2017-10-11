@@ -1,5 +1,4 @@
 import torch.nn as nn
-import torch.nn.init as init
 from model import ops
 
 class MDRN(nn.Module):
@@ -26,11 +25,7 @@ class MDRN(nn.Module):
         )
         self.upsample = ops.UpsampleBlock(n_dims, scale)
         self.exit = nn.Conv2d(n_dims, 3, 3, 1, 1)
-
-        for module in self.modules():
-            if isinstance(module, nn.Conv2d):
-                init.kaiming_normal(module.weight)
-
+        
     def forward(self, x):
         x = self.sub_mean(x)
         x = self.entry(x)
