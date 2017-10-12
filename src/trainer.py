@@ -70,6 +70,7 @@ class Trainer():
         
         for epoch in range(self.start_epoch, config.max_epoch):
             t1 = time.time()
+            self.save(config.ckpt_dir, config.ckpt_name, epoch)
             for step, inputs in enumerate(self.train_loader):
                 hr = Variable(inputs[0], requires_grad=False)
                 lr = Variable(inputs[1], requires_grad=False)
@@ -87,16 +88,14 @@ class Trainer():
 
             t2 = time.time()
             remain_epoch = config.max_epoch - epoch
-            eta = int((t2-t1)*remain_epoch/60)
+            eta = (t2-t1)*remain_epoch/3600
             
             if config.verbose and (epoch+1)%100 == 0:
                 psnr = self.evaluate(True, epoch+1)
-                print("[{}/{}] PSNR: {:.3f} ETA:{} mins".
+                print("[{}/{}] PSNR: {:.3f} ETA:{:.1f} hours".
                     format(epoch+1, config.max_epoch, psnr, eta))
-
-                torch.save(self.refiner.state_dict(),
-                           os.path.join(config.ckpt_dir, 
-                           "{}_{}.pth".format(config.model, epoch+1)))
+        
+                self.save(config.ckpt_dir, config.ckpt_name, epoch)
         
         if config.verbose:
             psnr = self.evaluate(True, epoch+1)
@@ -149,3 +148,8 @@ class Trainer():
         self.refiner.load_state_dict(torch.load(path))
         self.start_epoch = int(path.split(".")[0].split("_")[-1])
         print("Load pretrained {} model".format(path))
+
+    def save(self, ckpt_dir, ckpt_name, epoch):
+        save_path = os.path.join(
+            ckpt_dir, "{}_{}.pth".format(ckpt_name, epoch+1))
+        torch.save(self.refiner.state_dict(), save_path)

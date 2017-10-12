@@ -14,6 +14,7 @@ def parse_args():
                         default="dataset/Set14")
     parser.add_argument("--ckpt_dir", type=str,
                         default="checkpoint")
+    parser.add_argument("--ckpt_name", type=str)
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument("--num_gpu", type=int,
                         default=1)
@@ -26,8 +27,8 @@ def main(config):
     if config.model in ["mdrn", "mdrn_v2"]:
         config.max_epoch = 4000
         config.decay = 2000
-        config.batch_size = 64
-        config.patch_size = 48*config.scale
+        config.batch_size = 32
+        config.patch_size = 80*config.scale
         config.lr = 0.0001
         config.verbose = True
     
