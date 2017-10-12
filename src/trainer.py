@@ -70,7 +70,6 @@ class Trainer():
         
         for epoch in range(self.start_epoch, config.max_epoch):
             t1 = time.time()
-            self.save(config.ckpt_dir, config.ckpt_name, epoch)
             for step, inputs in enumerate(self.train_loader):
                 hr = Variable(inputs[0], requires_grad=False)
                 lr = Variable(inputs[1], requires_grad=False)
