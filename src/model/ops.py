@@ -89,7 +89,34 @@ class BtnBasicBlock(nn.Module):
     def forward(self, x):
         out = self.body(x)
         return out
+       
+       
+class ResBlock(nn.Module):
+    def __init__(self, 
+                 n_dims,
+                 dilation=1, act=nn.LeakyReLU(0.2, True)):
+        super(ResBlock, self).__init__()
+
+        if dilation == 1:
+            pad = 1
+        elif dilation == 2:
+            pad = 2
+        else:
+            raise ValueError("Currnetly not support {}-dilation conv".format(dilation))
         
+        self.body = nn.Sequential(
+            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation),
+            act,
+            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation),
+            act
+        )
+        
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x) + x
+        return out 
+
 
 class BtnResBlock(nn.Module):
     def __init__(self, 
