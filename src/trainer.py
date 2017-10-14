@@ -19,6 +19,9 @@ class Trainer():
         if config.model in ["mdrn"]:
             from model.mdrn import MDRN
             self.refiner = MDRN(config.scale)
+        elif config.model in ["base"]:
+            from model.base import MDRN
+            self.refiner = MDRN(config.scale)
         elif config.model in ["mdrn_v2"]:
             from model.mdrn_v2 import MDRN
             self.refiner = MDRN(config.scale)
