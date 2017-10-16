@@ -183,7 +183,10 @@ class BtnMDResBlock(nn.Module):
             act
         )
 
-        self.exit = nn.Conv2d(n_dims, n_dims, 1, 1, 0)
+        self.exit = nn.Sequential(
+            nn.Conv2d(n_dims, n_dims, 1, 1, 0),
+            act
+        )
         
         init_weights(self.modules)
 
