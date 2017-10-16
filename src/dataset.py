@@ -43,6 +43,8 @@ def random_rotate_pair(im1, im2):
 
 class SRDataset(data.Dataset):
     def __init__(self, path, scale, patch_size, train=True):
+        super(SRDataset, self).__init__()
+
         self.train = train
         self.scale = scale
         self.patch_size = patch_size
@@ -67,6 +69,35 @@ class SRDataset(data.Dataset):
             hr, lr = random_rotate_pair(hr, lr)
         else:
             lr = Image.open(self.lr_list[index])
+
+        return self.transform(hr), self.transform(lr)
+
+    def __len__(self):
+        return len(self.hr_list)
+        
+
+# TODO: need self ensemble method
+class TestDataset(data.Dataset):
+    def __init__(self, dirname, scale, self_ensemble):
+        super(TestDataset, self).__init__()
+
+        self.scale = scale
+        self.hr_list = glob.glob(os.path.join(dirname, "HR/*.png"))
+        self.lr_list = glob.glob(os.path.join(dirname, "LR_X{}/*.png".format(scale)))
+
+        self.hr_list.sort()
+        self.lr_list.sort()
+
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+
+    def __getitem__(self, index):
+        hr = Image.open(self.hr_list[index])
+        lr = Image.open(self.lr_list[index])
+
+        hr = hr.convert("RGB")
+        lr = lr.convert("RGB")
 
         return self.transform(hr), self.transform(lr)
 
