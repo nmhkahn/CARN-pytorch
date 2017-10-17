@@ -81,6 +81,7 @@ class TestDataset(data.Dataset):
     def __init__(self, dirname, scale, self_ensemble):
         super(TestDataset, self).__init__()
 
+        self.name  = dirname.split("/")[-1]
         self.scale = scale
         self.hr_list = glob.glob(os.path.join(dirname, "HR/*.png"))
         self.lr_list = glob.glob(os.path.join(dirname, "LR_X{}/*.png".format(scale)))
