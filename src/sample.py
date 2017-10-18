@@ -31,7 +31,7 @@ def save_image(tensor, filename):
 
 def sample(refiner, dataset, config):
     scale = config.scale
-    for step, (hr, lr) in enumerate(dataset):
+    for step, (hr, lr, name) in enumerate(dataset):
         if "DIV2K" in dataset.name:
             h, w = lr.size()[1:]
             h_half, w_half = int(h/2), int(w/2)
@@ -59,16 +59,28 @@ def sample(refiner, dataset, config):
             lr = Variable(lr.unsqueeze(0), volatile=True).cuda()
             sr = refiner(lr).data[0]
 
-        sample_dir = os.path.join(config.sample_dir,
-            config.test_data_dir.split("/")[-1])
-        if not os.path.exists(sample_dir):
-            os.makedirs(sample_dir)
-
         model_name = config.ckpt_path.split(".")[0].split("/")[-1]
-        save_image(sr, os.path.join(sample_dir, "{}_{}_SR.png".format(model_name, step)))
-        save_image(hr, os.path.join(sample_dir, "{}_{}_HR.png".format(model_name, step)))
+        sr_dir = os.path.join(config.sample_dir,
+                              model_name, 
+                              config.test_data_dir.split("/")[-1],
+                              "SRx{}".format(config.scale))
+        hr_dir = os.path.join(config.sample_dir,
+                              model_name, 
+                              config.test_data_dir.split("/")[-1],
+                              "HR")
         
-        print("Saved {}_{}_SR.png".format(model_name, step))
+        if not os.path.exists(sr_dir):
+            os.makedirs(sr_dir)
+            
+        if not os.path.exists(hr_dir):
+            os.makedirs(hr_dir)
+
+        sr_im_path = os.path.join(sr_dir, "{}".format(name))
+        hr_im_path = os.path.join(hr_dir, "{}".format(name))
+
+        save_image(sr, sr_im_path)
+        save_image(hr, hr_im_path)
+        print("Saved {}".format(sr_im_path))
 
 
 def main(config):

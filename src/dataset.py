@@ -99,8 +99,9 @@ class TestDataset(data.Dataset):
 
         hr = hr.convert("RGB")
         lr = lr.convert("RGB")
+        filename = self.hr_list[index].split("/")[-1]
 
-        return self.transform(hr), self.transform(lr)
+        return self.transform(hr), self.transform(lr), filename
 
     def __len__(self):
         return len(self.hr_list)
