@@ -25,6 +25,9 @@ class Trainer():
         elif config.model in ["mdrn_v2"]:
             from model.mdrn_v2 import MDRN
             self.refiner = MDRN(config.scale)
+        elif config.model in ["mdrn_multi"]:
+            from model.mdrn_multi import MDRN
+            self.refiner = MDRN(config.scale)
 
         self.loss_fn = nn.L1Loss()
         self.opt = optim.Adam(
@@ -48,7 +51,7 @@ class Trainer():
                                        shuffle=False)
         
         self.lr_scheduler = lr_scheduler.MultiStepLR(self.opt, 
-            [config.decay], gamma=0.1)
+            [1000, 3000], gamma=0.1)
 
         if config.cuda:
             self.refiner = self.refiner.cuda()
