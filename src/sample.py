@@ -67,6 +67,8 @@ def sample(refiner, dataset, config):
         model_name = config.ckpt_path.split(".")[0].split("/")[-1]
         save_image(sr, os.path.join(sample_dir, "{}_{}_SR.png".format(model_name, step)))
         save_image(hr, os.path.join(sample_dir, "{}_{}_HR.png".format(model_name, step)))
+        
+        print("Saved {}_{}_SR.png".format(model_name, step))
 
 
 def main(config):
