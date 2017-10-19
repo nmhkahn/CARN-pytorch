@@ -42,12 +42,16 @@ def random_rotate_pair(im1, im2):
 
 
 class SRDataset(data.Dataset):
-    def __init__(self, path, scale, patch_size, train=True):
+    def __init__(self, path, scale, patch_size):
         super(SRDataset, self).__init__()
 
-        self.train = train
         self.scale = scale
         self.patch_size = patch_size
+        
+        # average size of DIV2K train data
+        self.mean_LR_size = (int(1500/self.scale), int(2000/self.scale))
+        self.patch_per_im = int(self.mean_LR_size[0]/patch_size * \
+                                self.mean_LR_size[1]/patch_size)
 
         self.hr_list = glob.glob(os.path.join(path, "HR/*.png"))
         self.lr_list = glob.glob(os.path.join(path, "LR_X{}/*.png".format(scale)))
@@ -60,25 +64,22 @@ class SRDataset(data.Dataset):
         ])
 
     def __getitem__(self, index):
+        index = index % len(self.hr_list)
         hr = Image.open(self.hr_list[index])
         
-        # if patch_size == -1, it means test phase
-        if self.patch_size > 0:
-            hr, lr = random_crop_pair(hr, self.patch_size, self.scale)
-            hr, lr = random_flip_pair(hr, lr)
-            hr, lr = random_rotate_pair(hr, lr)
-        else:
-            lr = Image.open(self.lr_list[index])
+        hr, lr = random_crop_pair(hr, self.patch_size, self.scale)
+        hr, lr = random_flip_pair(hr, lr)
+        hr, lr = random_rotate_pair(hr, lr)
 
         return self.transform(hr), self.transform(lr)
 
     def __len__(self):
-        return len(self.hr_list)
+        return len(self.hr_list) * self.patch_per_im
         
 
 # TODO: need self ensemble method
 class TestDataset(data.Dataset):
-    def __init__(self, dirname, scale, self_ensemble):
+    def __init__(self, dirname, scale, self_ensemble=False):
         super(TestDataset, self).__init__()
 
         self.name  = dirname.split("/")[-1]

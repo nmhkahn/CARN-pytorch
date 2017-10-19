@@ -25,11 +25,12 @@ def parse_args():
 
 def main(config):
     if config.model in ["mdrn", "mdrn_v2", "base", "mdrn_multi"]:
-        config.max_epoch = 4000
-        config.decay = 2000
-        config.batch_size = 16
-        config.patch_size = 96*config.scale
-        config.lr = 0.0001
+        config.max_epoch = 150
+        config.batch_size = 32
+        config.patch_size = 64
+        config.lr = 0.1
+        config.step = 10
+        config.clip = 0.4
         config.verbose = True
     
     print(json.dumps(vars(config), indent=4, sort_keys=True))

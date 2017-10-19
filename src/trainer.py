@@ -12,7 +12,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torchvision
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from dataset import SRDataset
+from dataset import SRDataset, TestDataset
 
 class Trainer():
     def __init__(self, config):
@@ -37,9 +37,8 @@ class Trainer():
         self.train_data = SRDataset(config.train_data_path, 
                                     scale=config.scale, 
                                     patch_size=config.patch_size)
-        self.test_data  = SRDataset(config.test_data_path, 
-                                    scale=config.scale, 
-                                    patch_size=-1, train=False)
+        self.test_data  = TestDataset(config.test_data_path, 
+                                      scale=config.scale)
 
         self.train_loader = DataLoader(self.train_data,
                                        batch_size=config.batch_size,
@@ -50,9 +49,6 @@ class Trainer():
                                        num_workers=1,
                                        shuffle=False)
         
-        self.lr_scheduler = lr_scheduler.MultiStepLR(self.opt, 
-            [1000, 3000], gamma=0.1)
-
         if config.cuda:
             self.refiner = self.refiner.cuda()
             self.loss_fn = self.loss_fn.cuda()
@@ -71,11 +67,15 @@ class Trainer():
         num_steps_per_epoch = len(self.train_loader)
         
         if config.num_gpu > 0:
-            refiner = nn.DataParallel(self.refiner, 
-                                      device_ids=range(config.num_gpu))
+            refiner = nn.DataParallel(self.refiner, device_ids=range(config.num_gpu))
         
         for epoch in range(self.start_epoch, config.max_epoch):
             t1 = time.time()
+			
+            lr = self.decay_learning_rate(epoch)
+            for param_group in self.opt.param_groups:
+                param_group["lr"] = lr
+
             for step, inputs in enumerate(self.train_loader):
                 hr = Variable(inputs[0], requires_grad=False)
                 lr = Variable(inputs[1], requires_grad=False)
@@ -88,14 +88,14 @@ class Trainer():
                 
                 self.opt.zero_grad()
                 loss.backward()
+                nn.utils.clip_grad_norm(self.refiner.parameters(), config.clip) 
                 self.opt.step()
-            self.lr_scheduler.step()
 
             t2 = time.time()
             remain_epoch = config.max_epoch - epoch
             eta = (t2-t1)*remain_epoch/3600
             
-            if config.verbose and (epoch+1)%100 == 0:
+            if config.verbose:
                 psnr = self.evaluate(True, epoch+1)
                 print("[{}/{}] PSNR: {:.3f} ETA:{:.1f} hours".
                     format(epoch+1, config.max_epoch, psnr, eta))
@@ -158,3 +158,8 @@ class Trainer():
         save_path = os.path.join(
             ckpt_dir, "{}_{}.pth".format(ckpt_name, epoch+1))
         torch.save(self.refiner.state_dict(), save_path)
+
+    def decay_learning_rate(self, epoch):
+        if epoch < 50:
+    	    lr = self.config.lr * (0.1 ** (epoch // self.config.step))
+        return lr
