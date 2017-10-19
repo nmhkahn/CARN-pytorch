@@ -138,8 +138,9 @@ class Trainer():
                 im2 = misc.imresize(im2, im1.shape[:-1], "bicubic")
 
                 # remove borderline for benchmark
-                im1 = im1[config.scale:-config.scale, config.scale:-config.scale]
-                im2 = im2[config.scale:-config.scale, config.scale:-config.scale]
+                shave = 6+config.scale
+                im1 = im1[shave:-shave, shave:-shave]
+                im2 = im2[shave:-shave, shave:-shave]
 
                 # calculate PSNR with luminance only
                 im1 = color.rgb2ycbcr(im1)[:, :, 0] / 255
