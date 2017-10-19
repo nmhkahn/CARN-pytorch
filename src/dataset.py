@@ -9,6 +9,7 @@ import torchvision.transforms as transforms
 from PIL import Image, ImageOps
 
 def random_crop_pair(hr, size, scale):
+    size = size*scale
     w, h = hr.size
     lr_size = int(size/scale)
 
