@@ -90,8 +90,11 @@ def main(config):
     elif config.model in ["base"]:
         from model.base import MDRN
         refiner = MDRN(config.scale)
-    elif config.model in ["mdrn_v2"]:
-        from model.mdrn_v2 import MDRN
+    elif config.model in ["mdrn_multi"]:
+        from model.mdrn_multi import MDRN
+        refiner = MDRN(config.scale)
+    elif config.model in ["mdrn_multi_v2"]:
+        from model.mdrn_multi_v2 import MDRN
         refiner = MDRN(config.scale) 
     else:
         raise NotImplementedError("{} is not in our list".format(model_name))

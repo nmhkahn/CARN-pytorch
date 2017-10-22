@@ -22,11 +22,11 @@ class Trainer():
         elif config.model in ["base"]:
             from model.base import MDRN
             self.refiner = MDRN(config.scale)
-        elif config.model in ["mdrn_v2"]:
-            from model.mdrn_v2 import MDRN
-            self.refiner = MDRN(config.scale)
         elif config.model in ["mdrn_multi"]:
             from model.mdrn_multi import MDRN
+            self.refiner = MDRN(config.scale)
+        elif config.model in ["mdrn_multi_v2"]:
+            from model.mdrn_multi_v2 import MDRN
             self.refiner = MDRN(config.scale)
 
         self.loss_fn = nn.L1Loss()

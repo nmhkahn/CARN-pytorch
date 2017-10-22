@@ -62,6 +62,7 @@ class BasicBlock(nn.Module):
         out = self.body(x)
         return out
 
+
 class BtnBasicBlock(nn.Module):
     def __init__(self, 
                  n_dims, n_btn_dims, 
@@ -145,42 +146,54 @@ class BtnResBlock(nn.Module):
     def forward(self, x):
         out = self.body(x) + x
         return out
+        
+    
+class ReduceBtnResBlock(nn.Module):
+    def __init__(self, 
+                 n_dims, n_out_dims, n_btn_dims,
+                 dilation=1, act=nn.LeakyReLU(0.2, True)):
+        super(ReduceBtnResBlock, self).__init__()
+
+        if dilation == 1:
+            pad = 1
+        elif dilation == 2:
+            pad = 2
+        else:
+            raise ValueError("Currnetly not support {}-dilation conv".format(dilation))
+        
+        self.body = nn.Sequential(
+            nn.Conv2d(n_dims, n_btn_dims, 1, 1, 0),
+            act,
+            nn.Conv2d(n_btn_dims, n_btn_dims, 3, 1, pad, dilation=dilation),
+            act,
+            nn.Conv2d(n_btn_dims, n_out_dims, 3, 1, pad, dilation=dilation),
+            act
+        )
+
+        self.conv1x1 = nn.Conv2d(n_dims, n_out_dims, 1, 1, 0)
+        
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x) + self.conv1x1(x)
+        return out
 
 
 class BtnMDResBlock(nn.Module):
     def __init__(self, 
-                 n_dims, n_branch_dims, n_branch_btn_dims,
-                 act=nn.LeakyReLU(0.1, True)):
+                 n_dims, n_branch_dims,
+                 act=nn.LeakyReLU(0.2, True)):
         super(BtnMDResBlock, self).__init__()
         
-        pad = dilation = [1, 2, 3]
-        n_bd, n_bbd = n_branch_dims, n_branch_btn_dims
+        pad  = dilation = [1, 2]
+        n_bd = n_branch_dims
 
         self.branch0 = nn.Sequential(
-            nn.Conv2d(n_dims, n_bbd[0], 1, 1, 0),
-            act,
-            nn.Conv2d(n_bbd[0], n_bbd[0], 3, 1, pad[0], dilation=dilation[0]),
-            act,
-            nn.Conv2d(n_bbd[0], n_bd[0], 3, 1, pad[0], dilation=dilation[0]),
-            act
+            ReduceBtnResBlock(n_dims, n_branch_dims[0], n_branch_dims[0], dilation=1)
         )
         
         self.branch1 = nn.Sequential(
-            nn.Conv2d(n_dims, n_bbd[1], 1, 1, 0),
-            act,
-            nn.Conv2d(n_bbd[1], n_bbd[1], 3, 1, pad[1], dilation=dilation[1]),
-            act,
-            nn.Conv2d(n_bbd[1], n_bd[1], 3, 1, pad[1], dilation=dilation[1]),
-            act
-        )
-        
-        self.branch2 = nn.Sequential(
-            nn.Conv2d(n_dims, n_bbd[2], 1, 1, 0),
-            act,
-            nn.Conv2d(n_bbd[2], n_bbd[2], 3, 1, pad[2], dilation=dilation[2]),
-            act,
-            nn.Conv2d(n_bbd[2], n_bd[2], 3, 1, pad[2], dilation=dilation[2]),
-            act
+            ReduceBtnResBlock(n_dims, n_branch_dims[1], n_branch_dims[1], dilation=2)
         )
 
         self.exit = nn.Sequential(
@@ -193,9 +206,8 @@ class BtnMDResBlock(nn.Module):
     def forward(self, x):
         branch0 = self.branch0(x)
         branch1 = self.branch1(x)
-        branch2 = self.branch2(x)
 
-        cat = torch.cat((branch0, branch1, branch2), dim=1)
+        cat = torch.cat((branch0, branch1), dim=1)
         out = self.exit(cat) + x
         return out
 

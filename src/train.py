@@ -24,12 +24,12 @@ def parse_args():
     return parser.parse_args()
 
 def main(config):
-    if config.model in ["mdrn", "mdrn_v2", "base", "mdrn_multi"]:
-        config.max_epoch = 100
+    if config.model in ["mdrn", "base", "mdrn_multi", "mdrn_multi_v2"]:
+        config.max_epoch = 50
         config.batch_size = 32
         config.patch_size = 64
         config.lr = 0.0001
-        config.step = 60
+        config.step = 30
         config.clip = 0.4
         config.verbose = True
     
