@@ -1,9 +1,6 @@
 import os
 import time
-import math
 import numpy as np
-import scipy.misc as misc
-import skimage.color as color
 import skimage.measure as measure
 import torch
 import torch.nn as nn
@@ -13,6 +10,29 @@ import torchvision
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from dataset import SRDataset, TestDataset
+
+def psnr(im1, im2):
+    def im2double(im):
+        min_val, max_val = 0, 255
+        out = (im.astype(np.float64)-min_val) / (max_val-min_val)
+        return out
+        
+    im1 = im2double(im1)
+    im2 = im2double(im2)
+    psnr = measure.compare_psnr(im1, im2, data_range=1)
+    return psnr
+
+
+def ssim(im1, im2):
+    ssim = measure.compare_ssim(im1, im2, 
+                                K1=0.01, K2=0.03,
+                                gaussian_weights=True, 
+                                sigma=1.5,
+                                use_sample_covariance=False,
+                                multichannel=True)
+
+    return ssim
+
 
 class Trainer():
     def __init__(self, config):
@@ -44,10 +64,6 @@ class Trainer():
                                        batch_size=config.batch_size,
                                        num_workers=4,
                                        shuffle=True, drop_last=True)
-        self.test_loader  = DataLoader(self.test_data,
-                                       batch_size=1,
-                                       num_workers=1,
-                                       shuffle=False)
         
         if config.cuda:
             self.refiner = self.refiner.cuda()
@@ -71,6 +87,8 @@ class Trainer():
         
         for epoch in range(self.start_epoch, config.max_epoch):
             t1 = time.time()
+            psnr, ssim = self.evaluate()
+            print("{:.4f}, {:.4f}".format(psnr, ssim))
 			
             lr = self.decay_learning_rate(epoch)
             for param_group in self.opt.param_groups:
@@ -96,63 +114,66 @@ class Trainer():
             eta = (t2-t1)*remain_epoch/3600
             
             if config.verbose:
-                psnr = self.evaluate(True, epoch+1)
-                print("[{}/{}] PSNR: {:.3f} ETA:{:.1f} hours".
-                    format(epoch+1, config.max_epoch, psnr, eta))
+                psnr, ssim = self.evaluate()
+                print("[{}/{}] PSNR: {:.4f} SSIM: {:.4f} ETA:{:.1f} hours".
+                    format(epoch+1, config.max_epoch, psnr, ssim, eta))
         
                 self.save(config.ckpt_dir, config.ckpt_name, epoch)
         
         if config.verbose:
-            psnr = self.evaluate(True, epoch+1)
-            print("[Final] PSNR: {:.3f}".format(psnr))
+            psnr, ssim = self.evaluate()
+            print("[Final] PSNR: {:.4f} SSIM: {:.4f}".format(psnr, ssim))
 
-    def evaluate(self, save=True, msg=""):
+    def evaluate(self):
         config = self.config
-        mean_psnr = 0
-        for step, inputs in enumerate(self.test_loader):
-            hr = Variable(inputs[0], volatile=True)
-            lr = Variable(inputs[1], volatile=True)
+        mean_psnr, mean_ssim = 0, 0
 
-            if config.cuda:
-                hr, lr = hr.cuda(), lr.cuda()
+        for step, (hr, lr, name) in enumerate(self.test_data):
+            h, w = lr.size()[1:]
+            h_half, w_half = int(h/2), int(w/2)
+            h_chop, w_chop = h_half + config.shave, w_half + config.shave
 
-            sr = self.refiner(lr)
-                      
-            if save:
-                torchvision.utils.save_image(hr.data,
-                    "sample/{}_{}_hr.png".format(msg, step))
-                torchvision.utils.save_image(sr.data,
-                    "sample/{}_{}_sr.png".format(msg, step))
-                
-            hr = hr.data.cpu().numpy()
-            sr = sr.data.cpu().numpy()
-            lr = lr.data.cpu().numpy()
+            # split large image to 4 patch to avoid OOM error
+            lr_patch = torch.FloatTensor(4, 3, h_chop, w_chop)
+            lr_patch[0].copy_(lr[:, 0:h_chop, 0:w_chop])
+            lr_patch[1].copy_(lr[:, 0:h_chop, w-w_chop:w])
+            lr_patch[2].copy_(lr[:, h-h_chop:h, 0:w_chop])
+            lr_patch[3].copy_(lr[:, h-h_chop:h, w-w_chop:w])
+            lr_patch = Variable(lr_patch, volatile=True).cuda()
             
-            for im1, im2 in zip(hr, sr):
-                im1 = np.transpose(im1, (1, 2, 0))
-                im2 = np.transpose(im2, (1, 2, 0))
+            sr = self.refiner(lr_patch).data
             
-                im1 = (np.clip(im1, 0, 1)*255).astype(np.uint8)
-                im2 = (np.clip(im2, 0, 1)*255).astype(np.uint8)
-                
-                im2 = misc.imresize(im2, im1.shape[:-1], "bicubic")
+            h, h_half, h_chop = h*config.scale, h_half*config.scale, h_chop*config.scale
+            w, w_half, w_chop = w*config.scale, w_half*config.scale, w_chop*config.scale
+            
+            # merge splited patch images
+            result = torch.FloatTensor(3, h, w).cuda()
+            result[:, 0:h_half, 0:w_half].copy_(sr[0, :, 0:h_half, 0:w_half])
+            result[:, 0:h_half, w_half:w].copy_(sr[1, :, 0:h_half, w_chop-w+w_half:w_chop])
+            result[:, h_half:h, 0:w_half].copy_(sr[2, :, h_chop-h+h_half:h_chop, 0:w_half])
+            result[:, h_half:h, w_half:w].copy_(sr[3, :, h_chop-h+h_half:h_chop, w_chop-w+w_half:w_chop])
+            sr = result
 
-                # remove borderline for benchmark
-                shave = 6+config.scale
-                im1 = im1[shave:-shave, shave:-shave]
-                im2 = im2[shave:-shave, shave:-shave]
+            hr = hr.cpu().mul(255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
+            sr = sr.cpu().mul(255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
 
-                # calculate PSNR with luminance only
-                im1 = color.rgb2ycbcr(im1)[:, :, 0] / 255
-                im2 = color.rgb2ycbcr(im2)[:, :, 0] / 255
+            # evaluate PSNR and SSIM
+            bnd = 6+config.scale
+            im1 = hr[bnd:-bnd, bnd:-bnd]
+            im2 = sr[bnd:-bnd, bnd:-bnd]
 
-                mean_psnr += measure.compare_psnr(im1, im2)
+            mean_psnr += psnr(im1, im2) / len(self.test_data)
+            mean_ssim += ssim(im1, im2) / len(self.test_data)
 
-        return mean_psnr / len(self.test_data)
+        return mean_psnr, mean_ssim
 
     def load(self, path):
         self.refiner.load_state_dict(torch.load(path))
-        self.start_epoch = int(path.split(".")[0].split("_")[-1])
+        splited = path.split(".")[0].split("_")[-1]
+        try:
+            self.start_epoch = int(path.split(".")[0].split("_")[-1])
+        except ValueError:
+            self.start_epoch = 0
         print("Load pretrained {} model".format(path))
 
     def save(self, ckpt_dir, ckpt_name, epoch):
@@ -161,6 +182,5 @@ class Trainer():
         torch.save(self.refiner.state_dict(), save_path)
 
     def decay_learning_rate(self, epoch):
-        if epoch < 50:
-    	    lr = self.config.lr * (0.1 ** (epoch // self.config.step))
+        lr = self.config.lr * (0.1 ** (epoch // self.config.step))
         return lr
