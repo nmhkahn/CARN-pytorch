@@ -8,6 +8,7 @@ class Net(nn.Module):
         self.sub_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=True)
         self.add_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=False)
         
+        self.up = nn.Upsample(scale_factor=scale)
         self.relu = nn.ReLU()
         
         self.entry = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
@@ -18,16 +19,14 @@ class Net(nn.Module):
         self.exit = nn.Conv2d(64, 3, 3, 1, 1)
         
     def forward(self, x):
+        x = self.up(x)
         x = self.sub_mean(x)
         
         out = self.relu(self.entry(x))
         out = self.blocks(out)
+        out = self.exit(out)
 
         out += x
-
-        out = self.upsample(out)
-        out = self.exit(out)
-        
         out = self.add_mean(out)
 
         return out

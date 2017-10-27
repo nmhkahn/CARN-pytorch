@@ -24,7 +24,7 @@ def parse_args():
     return parser.parse_args()
 
 def main(cfg):
-    if cfg.model in ["base"]:
+    if cfg.model in ["vdsr", "base"]:
         from model.base import Net
 
         cfg.max_steps = 60000
