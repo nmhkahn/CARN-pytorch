@@ -84,6 +84,7 @@ class Trainer():
                 
                 self.optim.zero_grad()
                 loss.backward()
+                nn.utils.clip_grad_norm(self.refiner.parameters(), cfg.clip)
                 self.optim.step()
 
                 lr = self.decay_learning_rate()
@@ -120,7 +121,6 @@ class Trainer():
             lr = inputs[1].squeeze(0)
             name = inputs[2]
 
-            print(lr.size())
             h, w = lr.size()[1:]
             h_half, w_half = int(h/2), int(w/2)
             h_chop, w_chop = h_half + cfg.shave, w_half + cfg.shave

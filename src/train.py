@@ -25,19 +25,31 @@ def parse_args():
 
 def main(cfg):
     if cfg.model in ["vdsr", "base"]:
+        cfg.patch_size = 41
+        cfg.batch_size = 128
+        
         if cfg.model in ["vdsr"]:
             from model.vdsr import Net
         elif cfg.model in ["base"]:
             from model.base import Net
-
-        cfg.max_steps = 60000
-        cfg.batch_size = 128
+    elif cfg.model in ["dnet", "rnet"]:
         cfg.patch_size = 41
-        cfg.lr = 0.0001
-        cfg.weight_decay = 0.0001
-        cfg.decay = 30000
-        cfg.verbose = True
+        cfg.batch_size = 128
+        
+        if cfg.model in ["dnet"]:
+            from model.dnet import Net
+        elif cfg.model in ["rnet"]:
+            from model.rnet import Net
     
+    # common settings
+    cfg.max_steps = 60000
+    cfg.batch_size = 128
+    cfg.lr = 0.0001
+    cfg.clip = 0.4
+    cfg.weight_decay = 0.0001
+    cfg.decay = 30000
+    cfg.verbose = True
+            
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
     trainer = Trainer(Net, cfg)
     trainer.fit()
