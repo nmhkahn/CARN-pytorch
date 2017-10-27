@@ -15,7 +15,6 @@ class Net(nn.Module):
         self.blocks = nn.Sequential(
             *[ops.BasicBlock(64, act=self.relu) for _ in range(18)]
         )
-        self.upsample = ops.UpsampleBlock(64, scale)
         self.exit = nn.Conv2d(64, 3, 3, 1, 1)
         
     def forward(self, x):

@@ -25,7 +25,10 @@ def parse_args():
 
 def main(cfg):
     if cfg.model in ["vdsr", "base"]:
-        from model.base import Net
+        if cfg.model in ["vdsr"]:
+            from model.vdsr import Net
+        elif cfg.model in ["base"]:
+            from model.base import Net
 
         cfg.max_steps = 60000
         cfg.batch_size = 128
