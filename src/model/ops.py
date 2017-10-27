@@ -7,7 +7,7 @@ from torch.autograd import Variable
 def init_weights(modules):
     for m in modules():
         if isinstance(m, nn.Conv2d):
-            nn.init.kaiming_normal(m.weight)
+            nn.init.kaiming_normal(m.weight, mode="fan_out")
 
 
 class MeanShift(nn.Module):
@@ -51,6 +51,30 @@ class BasicBlock(nn.Module):
         
     def forward(self, x):
         out = self.body(x)
+        return out
+
+
+class ResidualBlock(nn.Module):
+    def __init__(self, 
+                 n_dims, 
+                 dilation=1, 
+                 act=nn.LeakyReLU(0.2, True)):
+        super(ResidualBlock, self).__init__()
+
+        # assume input.shape == output.shape
+        pad = dilation
+
+        self.body = nn.Sequential(
+            act,
+            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation, bias=False),
+            act,
+            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation, bias=False),
+        )
+
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x) + x
         return out
 
  
