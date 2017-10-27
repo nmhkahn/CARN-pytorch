@@ -50,12 +50,16 @@ class Trainer():
                                        batch_size=cfg.batch_size,
                                        num_workers=1,
                                        shuffle=True, drop_last=True)
+        self.test_loader  = DataLoader(self.test_data,
+                                       batch_size=1,
+                                       num_workers=1,
+                                       shuffle=False)
         
         self.refiner = self.refiner.cuda()
         self.loss_fn = self.loss_fn.cuda()
         
         self.cfg = cfg
-        self.start_step = 0 
+        self.step = 0 
         
         if cfg.verbose:
             num_params = 0
@@ -68,7 +72,6 @@ class Trainer():
         refiner = nn.DataParallel(self.refiner, 
                                   device_ids=range(cfg.num_gpu))
         
-        step = 0
         t1 = time.time()
         while True:
             for inputs in self.train_loader:
@@ -83,27 +86,27 @@ class Trainer():
                 loss.backward()
                 self.optim.step()
 
-                lr = self.decay_learning_rate(step)
+                lr = self.decay_learning_rate()
                 for param_group in self.optim.param_groups:
                     param_group["lr"] = lr
                 
-                step += 1
-                if step % 1000 == 0:
+                self.step += 1
+                if self.step % 1000 == 0:
                     t2 = time.time()
-                    remain_step = cfg.max_steps - step
+                    remain_step = cfg.max_steps - self.step
                     eta = (t2-t1)*remain_step/1000/3600
                     
                     if cfg.verbose:
                         psnr, ssim = self.evaluate()
                         print("[{}K/{}K] PSNR:{:.2f} SSIM:{:.4f} ETA:{:.1f} hours".
-                            format(int(step/1000), int(cfg.max_steps/1000), psnr, ssim, eta))
+                            format(int(self.step/1000), int(cfg.max_steps/1000), psnr, ssim, eta))
         
-                    self.save(cfg.ckpt_dir, cfg.ckpt_name, step)
+                    self.save(cfg.ckpt_dir, cfg.ckpt_name)
                     t1 = time.time()
 
-                if step > cfg.max_steps: break
+                if self.step > cfg.max_steps: break
         
-        self.save(cfg.ckpt_dir, cfg.ckpt_name, step)
+        self.save(cfg.ckpt_dir, cfg.ckpt_name)
         if cfg.verbose:
             psnr, ssim = self.evaluate()
             print("[Final] PSNR: {:.2f} SSIM: {:.4f}".format(psnr, ssim))
@@ -112,7 +115,12 @@ class Trainer():
         cfg = self.cfg
         mean_psnr, mean_ssim = 0, 0
 
-        for step, (hr, lr, name) in enumerate(self.test_data):
+        for step, inputs in enumerate(self.test_loader):
+            hr = inputs[0].squeeze(0)
+            lr = inputs[1].squeeze(0)
+            name = inputs[2]
+
+            print(lr.size())
             h, w = lr.size()[1:]
             h_half, w_half = int(h/2), int(w/2)
             h_chop, w_chop = h_half + cfg.shave, w_half + cfg.shave
@@ -155,16 +163,16 @@ class Trainer():
         self.refiner.load_state_dict(torch.load(path))
         splited = path.split(".")[0].split("_")[-1]
         try:
-            self.start_step = int(path.split(".")[0].split("_")[-1])
+            self.step = int(path.split(".")[0].split("_")[-1])
         except ValueError:
-            self.start_step = 0
+            self.step = 0
         print("Load pretrained {} model".format(path))
 
-    def save(self, ckpt_dir, ckpt_name, step):
+    def save(self, ckpt_dir, ckpt_name):
         save_path = os.path.join(
-            ckpt_dir, "{}_{}.pth".format(ckpt_name, step))
+            ckpt_dir, "{}_{}.pth".format(ckpt_name, self.step))
         torch.save(self.refiner.state_dict(), save_path)
 
-    def decay_learning_rate(self, step):
-        lr = self.cfg.lr * (0.5 ** (step // self.cfg.decay))
+    def decay_learning_rate(self):
+        lr = self.cfg.lr * (0.5 ** (self.step // self.cfg.decay))
         return lr
