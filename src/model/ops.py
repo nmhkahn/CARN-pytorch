@@ -7,11 +7,7 @@ from torch.autograd import Variable
 def init_weights(modules):
     for m in modules():
         if isinstance(m, nn.Conv2d):
-            n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            gain = init.calculate_gain("leaky_relu", 0.2)
-            std = gain / math.sqrt(n)
-            bound = math.sqrt(1.0) * std
-            m.weight.data.uniform_(-bound, bound)
+            nn.init.kaiming_normal(m.weight)
 
 
 class MeanShift(nn.Module):
@@ -39,20 +35,15 @@ class MeanShift(nn.Module):
 class BasicBlock(nn.Module):
     def __init__(self, 
                  n_dims, 
-                 dilation=1, act=nn.LeakyReLU(0.2, True)):
+                 dilation=1, 
+                 act=nn.LeakyReLU(0.2, True)):
         super(BasicBlock, self).__init__()
 
-        if dilation == 1:
-            pad = 1
-        elif dilation == 2:
-            pad = 2
-        else:
-            raise ValueError("Currnetly not support {}-dilation conv".format(dilation))
+        # assume input.shape == output.shape
+        pad = dilation
 
         self.body = nn.Sequential(
-            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation),
-            act,
-            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation),
+            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation, bias=False),
             act
         )
 
@@ -62,156 +53,7 @@ class BasicBlock(nn.Module):
         out = self.body(x)
         return out
 
-
-class BtnBasicBlock(nn.Module):
-    def __init__(self, 
-                 n_dims, n_btn_dims, 
-                 dilation=1, act=nn.LeakyReLU(0.2, True)):
-        super(BtnBasicBlock, self).__init__()
-
-        if dilation == 1:
-            pad = 1
-        elif dilation == 2:
-            pad = 2
-        else:
-            raise ValueError("Currnetly not support {}-dilation conv".format(dilation))
-
-        self.body = nn.Sequential(
-            nn.Conv2d(n_dims, n_btn_dims, 1, 1, 0),
-            act,
-            nn.Conv2d(n_btn_dims, n_btn_dims, 3, 1, pad, dilation=dilation),
-            act,
-            nn.Conv2d(n_btn_dims, n_dims, 3, 1, pad, dilation=dilation),
-            act
-        )
-
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x)
-        return out
-       
-       
-class ResBlock(nn.Module):
-    def __init__(self, 
-                 n_dims,
-                 dilation=1, act=nn.LeakyReLU(0.2, True)):
-        super(ResBlock, self).__init__()
-
-        if dilation == 1:
-            pad = 1
-        elif dilation == 2:
-            pad = 2
-        else:
-            raise ValueError("Currnetly not support {}-dilation conv".format(dilation))
-        
-        self.body = nn.Sequential(
-            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation),
-            act,
-            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation),
-            act
-        )
-        
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x) + x
-        return out 
-
-
-class BtnResBlock(nn.Module):
-    def __init__(self, 
-                 n_dims, n_btn_dims,
-                 dilation=1, act=nn.LeakyReLU(0.2, True)):
-        super(BtnResBlock, self).__init__()
-
-        if dilation == 1:
-            pad = 1
-        elif dilation == 2:
-            pad = 2
-        else:
-            raise ValueError("Currnetly not support {}-dilation conv".format(dilation))
-        
-        self.body = nn.Sequential(
-            nn.Conv2d(n_dims, n_btn_dims, 1, 1, 0),
-            act,
-            nn.Conv2d(n_btn_dims, n_btn_dims, 3, 1, pad, dilation=dilation),
-            act,
-            nn.Conv2d(n_btn_dims, n_dims, 3, 1, pad, dilation=dilation),
-            act
-        )
-        
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x) + x
-        return out
-        
-    
-class ReduceBtnResBlock(nn.Module):
-    def __init__(self, 
-                 n_dims, n_out_dims, n_btn_dims,
-                 dilation=1, act=nn.LeakyReLU(0.2, True)):
-        super(ReduceBtnResBlock, self).__init__()
-
-        if dilation == 1:
-            pad = 1
-        elif dilation == 2:
-            pad = 2
-        else:
-            raise ValueError("Currnetly not support {}-dilation conv".format(dilation))
-        
-        self.body = nn.Sequential(
-            nn.Conv2d(n_dims, n_btn_dims, 1, 1, 0),
-            act,
-            nn.Conv2d(n_btn_dims, n_btn_dims, 3, 1, pad, dilation=dilation),
-            act,
-            nn.Conv2d(n_btn_dims, n_out_dims, 3, 1, pad, dilation=dilation),
-            act
-        )
-
-        self.conv1x1 = nn.Conv2d(n_dims, n_out_dims, 1, 1, 0)
-        
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x) + self.conv1x1(x)
-        return out
-
-
-class BtnMDResBlock(nn.Module):
-    def __init__(self, 
-                 n_dims, n_branch_dims,
-                 act=nn.LeakyReLU(0.2, True)):
-        super(BtnMDResBlock, self).__init__()
-        
-        pad  = dilation = [1, 2]
-        n_bd = n_branch_dims
-
-        self.branch0 = nn.Sequential(
-            ReduceBtnResBlock(n_dims, n_branch_dims[0], n_branch_dims[0], dilation=1)
-        )
-        
-        self.branch1 = nn.Sequential(
-            ReduceBtnResBlock(n_dims, n_branch_dims[1], n_branch_dims[1], dilation=2)
-        )
-
-        self.exit = nn.Sequential(
-            nn.Conv2d(n_dims, n_dims, 1, 1, 0),
-            act
-        )
-        
-        init_weights(self.modules)
-
-    def forward(self, x):
-        branch0 = self.branch0(x)
-        branch1 = self.branch1(x)
-
-        cat = torch.cat((branch0, branch1), dim=1)
-        out = self.exit(cat) + x
-        return out
-
-
+ 
 class UpsampleBlock(nn.Module):
     def __init__(self, n_dims, scale, act=False):
         super(UpsampleBlock, self).__init__()

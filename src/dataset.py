@@ -1,81 +1,67 @@
 import os
 import glob
+import h5py
 import random
 import numpy as np
-import torch
+from PIL import Image
 import torch.utils.data as data
-import torchvision
 import torchvision.transforms as transforms
-from PIL import Image, ImageOps
 
-def random_crop_pair(hr, size, scale):
-    size = size*scale
-    w, h = hr.size
-    lr_size = int(size/scale)
+def random_crop(hr, lr, size, scale):
+    h, w = lr.shape[:-1]
+    x = random.randint(0, w-size)
+    y = random.randint(0, h-size)
 
-    x1 = random.randint(0, w-size)
-    y1 = random.randint(0, h-size)
+    hsize = size*scale
+    hx, hy = x*scale, y*scale
 
-    crop_hr = hr.crop((x1, y1, x1+size, y1+size))
-    crop_lr = crop_hr.resize((lr_size, lr_size), Image.BICUBIC)
+    crop_lr = lr[y:y+size, x:x+size]
+    crop_hr = hr[hy:hy+hsize, hx:hx+hsize]
 
     return crop_hr, crop_lr
 
 
-def random_flip_pair(im1, im2):
+def random_flip_and_rotate(im1, im2):
     if random.random() < 0.5:
-        im1 = ImageOps.flip(im1)
-        im2 = ImageOps.flip(im2)
+        im1 = np.flipud(im1)
+        im2 = np.flipud(im2)
 
     if random.random() < 0.5:
-        im1 = ImageOps.mirror(im1)
-        im2 = ImageOps.mirror(im2)
+        im1 = np.fliplr(im1)
+        im2 = np.fliplr(im2)
+
+    angle = random.choice([0, 1, 2, 3])
+    im1 = np.rot90(im1, angle).copy()
+    im2 = np.rot90(im2, angle).copy()
 
     return im1, im2
 
 
-def random_rotate_pair(im1, im2):
-    angle = random.choice([0, 90, 180, 270])
-    im1 = im1.rotate(angle)
-    im2 = im2.rotate(angle)
+class TrainDataset(data.Dataset):
+    def __init__(self, path, size, scale):
+        super(TrainDataset, self).__init__()
 
-    return im1, im2
-
-
-class SRDataset(data.Dataset):
-    def __init__(self, path, scale, patch_size):
-        super(SRDataset, self).__init__()
-
+        self.size = size
         self.scale = scale
-        self.patch_size = patch_size
-        
-        # average size of DIV2K train data
-        self.mean_LR_size = (int(1500/self.scale), int(2000/self.scale))
-        self.patch_per_im = int(self.mean_LR_size[0]/patch_size * \
-                                self.mean_LR_size[1]/patch_size)
 
-        self.hr_list = glob.glob(os.path.join(path, "HR/*.png"))
-        self.lr_list = glob.glob(os.path.join(path, "LR_X{}/*.png".format(scale)))
-
-        self.hr_list.sort()
-        self.lr_list.sort()
+        h5f = h5py.File(path, "r")
+        self.hr = [v[:] for v in h5f["HR"].values()]
+        self.lr = [v[:] for v in h5f["x{}".format(scale)].values()]
+        h5f.close()
 
         self.transform = transforms.Compose([
-            transforms.ToTensor(),
+            transforms.ToTensor()
         ])
 
     def __getitem__(self, index):
-        index = index % len(self.hr_list)
-        hr = Image.open(self.hr_list[index])
-        
-        hr, lr = random_crop_pair(hr, self.patch_size, self.scale)
-        hr, lr = random_flip_pair(hr, lr)
-        hr, lr = random_rotate_pair(hr, lr)
+        hr, lr = self.hr[index], self.lr[index]
+        hr, lr = random_crop(hr, lr, self.size, self.scale)
+        hr, lr = random_flip_and_rotate(hr, lr)
 
         return self.transform(hr), self.transform(lr)
 
     def __len__(self):
-        return len(self.hr_list) * self.patch_per_im
+        return len(self.hr)
         
 
 # TODO: need self ensemble method
@@ -85,25 +71,25 @@ class TestDataset(data.Dataset):
 
         self.name  = dirname.split("/")[-1]
         self.scale = scale
-        self.hr_list = glob.glob(os.path.join(dirname, "HR/*.png"))
-        self.lr_list = glob.glob(os.path.join(dirname, "LR_X{}/*.png".format(scale)))
+        self.hr = glob.glob(os.path.join(dirname, "HR/*.png"))
+        self.lr = glob.glob(os.path.join(dirname, "x{}/*.png".format(scale)))
 
-        self.hr_list.sort()
-        self.lr_list.sort()
+        self.hr.sort()
+        self.lr.sort()
 
         self.transform = transforms.Compose([
-            transforms.ToTensor(),
+            transforms.ToTensor()
         ])
 
     def __getitem__(self, index):
-        hr = Image.open(self.hr_list[index])
-        lr = Image.open(self.lr_list[index])
+        hr = Image.open(self.hr[index])
+        lr = Image.open(self.lr[index])
 
         hr = hr.convert("RGB")
         lr = lr.convert("RGB")
-        filename = self.hr_list[index].split("/")[-1]
+        filename = self.hr[index].split("/")[-1]
 
         return self.transform(hr), self.transform(lr), filename
 
     def __len__(self):
-        return len(self.hr_list)
+        return len(self.hr)

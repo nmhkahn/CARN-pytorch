@@ -5,11 +5,9 @@ import skimage.measure as measure
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
-import torchvision
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from dataset import SRDataset, TestDataset
+from dataset import TrainDataset, TestDataset
 
 def psnr(im1, im2):
     def im2double(im):
@@ -35,103 +33,89 @@ def ssim(im1, im2):
 
 
 class Trainer():
-    def __init__(self, config):
-        if config.model in ["mdrn"]:
-            from model.mdrn import MDRN
-            self.refiner = MDRN(config.scale)
-        elif config.model in ["base"]:
-            from model.base import MDRN
-            self.refiner = MDRN(config.scale)
-        elif config.model in ["mdrn_multi"]:
-            from model.mdrn_multi import MDRN
-            self.refiner = MDRN(config.scale)
-        elif config.model in ["mdrn_multi_v2"]:
-            from model.mdrn_multi_v2 import MDRN
-            self.refiner = MDRN(config.scale)
-
-        self.loss_fn = nn.L1Loss()
-        self.opt = optim.Adam(
+    def __init__(self, model, cfg):
+        self.refiner = model(cfg.scale)
+        self.loss_fn = nn.MSELoss()
+        self.optim = optim.Adam(
             filter(lambda p: p.requires_grad, self.refiner.parameters()), 
-            config.lr)
-
-        self.train_data = SRDataset(config.train_data_path, 
-                                    scale=config.scale, 
-                                    patch_size=config.patch_size)
-        self.test_data  = TestDataset(config.test_data_path, 
-                                      scale=config.scale)
+            cfg.lr, weight_decay=cfg.weight_decay)
+        
+        self.train_data = TrainDataset(cfg.train_data_path, 
+                                       scale=cfg.scale, 
+                                       size=cfg.patch_size)
+        self.test_data  = TestDataset(cfg.test_data_dir, 
+                                      scale=cfg.scale)
 
         self.train_loader = DataLoader(self.train_data,
-                                       batch_size=config.batch_size,
-                                       num_workers=4,
+                                       batch_size=cfg.batch_size,
+                                       num_workers=1,
                                        shuffle=True, drop_last=True)
         
-        if config.cuda:
-            self.refiner = self.refiner.cuda()
-            self.loss_fn = self.loss_fn.cuda()
+        self.refiner = self.refiner.cuda()
+        self.loss_fn = self.loss_fn.cuda()
         
-        self.start_epoch = 0 
-        self.config = config
+        self.cfg = cfg
+        self.start_step = 0 
         
-        if config.verbose:
+        if cfg.verbose:
             num_params = 0
             for param in self.refiner.parameters():
                 num_params += param.nelement()
             print("# of params:", num_params)
 
     def fit(self):
-        config = self.config
-        num_steps_per_epoch = len(self.train_loader)
+        cfg = self.cfg
+        refiner = nn.DataParallel(self.refiner, 
+                                  device_ids=range(cfg.num_gpu))
         
-        if config.num_gpu > 0:
-            refiner = nn.DataParallel(self.refiner, device_ids=range(config.num_gpu))
-        
-        for epoch in range(self.start_epoch, config.max_epoch):
-            t1 = time.time()
-            psnr, ssim = self.evaluate()
-            print("{:.4f}, {:.4f}".format(psnr, ssim))
-			
-            lr = self.decay_learning_rate(epoch)
-            for param_group in self.opt.param_groups:
-                param_group["lr"] = lr
-
-            for step, inputs in enumerate(self.train_loader):
+        step = 0
+        t1 = time.time()
+        while True:
+            for inputs in self.train_loader:
                 hr = Variable(inputs[0], requires_grad=False)
                 lr = Variable(inputs[1], requires_grad=False)
 
-                if config.cuda:
-                    hr, lr = hr.cuda(), lr.cuda()
-
+                hr, lr = hr.cuda(), lr.cuda()
                 sr = refiner(lr)
                 loss = self.loss_fn(sr, hr)
                 
-                self.opt.zero_grad()
+                self.optim.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm(self.refiner.parameters(), config.clip) 
-                self.opt.step()
+                self.optim.step()
 
-            t2 = time.time()
-            remain_epoch = config.max_epoch - epoch
-            eta = (t2-t1)*remain_epoch/3600
-            
-            if config.verbose:
-                psnr, ssim = self.evaluate()
-                print("[{}/{}] PSNR: {:.4f} SSIM: {:.4f} ETA:{:.1f} hours".
-                    format(epoch+1, config.max_epoch, psnr, ssim, eta))
+                lr = self.decay_learning_rate(step)
+                for param_group in self.optim.param_groups:
+                    param_group["lr"] = lr
+                
+                step += 1
+                if step % 1000 == 0:
+                    t2 = time.time()
+                    remain_step = cfg.max_steps - step
+                    eta = (t2-t1)*remain_step/1000/3600
+                    
+                    if cfg.verbose:
+                        psnr, ssim = self.evaluate()
+                        print("[{}K/{}K] PSNR:{:.2f} SSIM:{:.4f} ETA:{:.1f} hours".
+                            format(int(step/1000), int(cfg.max_steps/1000), psnr, ssim, eta))
         
-                self.save(config.ckpt_dir, config.ckpt_name, epoch)
+                    self.save(cfg.ckpt_dir, cfg.ckpt_name, step)
+                    t1 = time.time()
+
+                if step > cfg.max_steps: break
         
-        if config.verbose:
+        self.save(cfg.ckpt_dir, cfg.ckpt_name, step)
+        if cfg.verbose:
             psnr, ssim = self.evaluate()
-            print("[Final] PSNR: {:.4f} SSIM: {:.4f}".format(psnr, ssim))
+            print("[Final] PSNR: {:.2f} SSIM: {:.4f}".format(psnr, ssim))
 
     def evaluate(self):
-        config = self.config
+        cfg = self.cfg
         mean_psnr, mean_ssim = 0, 0
 
         for step, (hr, lr, name) in enumerate(self.test_data):
             h, w = lr.size()[1:]
             h_half, w_half = int(h/2), int(w/2)
-            h_chop, w_chop = h_half + config.shave, w_half + config.shave
+            h_chop, w_chop = h_half + cfg.shave, w_half + cfg.shave
 
             # split large image to 4 patch to avoid OOM error
             lr_patch = torch.FloatTensor(4, 3, h_chop, w_chop)
@@ -143,8 +127,8 @@ class Trainer():
             
             sr = self.refiner(lr_patch).data
             
-            h, h_half, h_chop = h*config.scale, h_half*config.scale, h_chop*config.scale
-            w, w_half, w_chop = w*config.scale, w_half*config.scale, w_chop*config.scale
+            h, h_half, h_chop = h*cfg.scale, h_half*cfg.scale, h_chop*cfg.scale
+            w, w_half, w_chop = w*cfg.scale, w_half*cfg.scale, w_chop*cfg.scale
             
             # merge splited patch images
             result = torch.FloatTensor(3, h, w).cuda()
@@ -158,7 +142,7 @@ class Trainer():
             sr = sr.cpu().mul(255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
 
             # evaluate PSNR and SSIM
-            bnd = 6+config.scale
+            bnd = 6+cfg.scale
             im1 = hr[bnd:-bnd, bnd:-bnd]
             im2 = sr[bnd:-bnd, bnd:-bnd]
 
@@ -171,16 +155,16 @@ class Trainer():
         self.refiner.load_state_dict(torch.load(path))
         splited = path.split(".")[0].split("_")[-1]
         try:
-            self.start_epoch = int(path.split(".")[0].split("_")[-1])
+            self.start_step = int(path.split(".")[0].split("_")[-1])
         except ValueError:
-            self.start_epoch = 0
+            self.start_step = 0
         print("Load pretrained {} model".format(path))
 
-    def save(self, ckpt_dir, ckpt_name, epoch):
+    def save(self, ckpt_dir, ckpt_name, step):
         save_path = os.path.join(
-            ckpt_dir, "{}_{}.pth".format(ckpt_name, epoch+1))
+            ckpt_dir, "{}_{}.pth".format(ckpt_name, step))
         torch.save(self.refiner.state_dict(), save_path)
 
-    def decay_learning_rate(self, epoch):
-        lr = self.config.lr * (0.1 ** (epoch // self.config.step))
+    def decay_learning_rate(self, step):
+        lr = self.cfg.lr * (0.5 ** (step // self.cfg.decay))
         return lr

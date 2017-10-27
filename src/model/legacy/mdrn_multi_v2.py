@@ -30,13 +30,13 @@ class MDRN(nn.Module):
 
         self.combine = nn.Sequential(
             nn.Conv2d(n_dims*3, n_dims, 1, 1, 0),
-            *[ops.BtnResBlock(n_dims, n_btn_dims, dilation=1) for _ in range(3)],
+            *[ops.ResBlock(n_dims, dilation=1) for _ in range(3)],
             nn.Conv2d(n_dims, n_dims, 3, 1, 1)
         )
 
         self.upsample = ops.UpsampleBlock(n_dims, scale)
         self.recon = nn.Sequential(
-            *[ops.BtnResBlock(n_dims, n_btn_dims, dilation=1) for _ in range(2)],
+            *[ops.ResBlock(n_dims, dilation=1) for _ in range(2)],
             nn.Conv2d(n_dims, 3, 3, 1, 1)
         )
         

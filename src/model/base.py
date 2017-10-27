@@ -1,36 +1,32 @@
 import torch.nn as nn
-from model import ops
+import model.ops as ops
 
-class MDRN(nn.Module):
+class Net(nn.Module):
     def __init__(self, scale):
-        super(MDRN, self).__init__()
-        n_dims = 64
-        n_btn_dims = 48
-        scale = scale
+        super(Net, self).__init__()
 
         self.sub_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=True)
         self.add_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=False)
-
-        self.entry = nn.Conv2d(3, n_dims, 3, 1, 1)
+        
+        self.up = nn.Upsample(scale_factor=scale)
+        self.relu = nn.ReLU()
+        
+        self.entry = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
         self.blocks = nn.Sequential(
-            *[ops.ResBlock(n_dims, dilation=1) for _ in range(12)],
-            *[ops.ResBlock(n_dims, dilation=1) for _ in range(12)],
-            *[ops.ResBlock(n_dims, dilation=1) for _ in range(12)],
-            *[ops.BasicBlock(n_dims, dilation=1) for _ in range(2)],
-            nn.Conv2d(n_dims, n_dims, 3, 1, 1),
+            *[ops.BasicBlock(64, act=self.relu) for _ in range(18)]
         )
-        self.upsample = ops.UpsampleBlock(n_dims, scale)
-        self.exit = nn.Conv2d(n_dims, 3, 3, 1, 1)
+        self.upsample = ops.UpsampleBlock(64, scale)
+        self.exit = nn.Conv2d(64, 3, 3, 1, 1)
         
     def forward(self, x):
-        x = self.sub_mean(x)
-        x = self.entry(x)
+        x = self.up(x)
+        residual = x
 
-        mid = self.blocks(x)
-        mid += x
+        out = self.sub_mean(x)
+        out = self.relu(self.entry(x))
+        out = self.exit(out)
 
-        up = self.upsample(mid)
-        out = self.exit(up)
+        out += residual
         out = self.add_mean(out)
 
         return out
