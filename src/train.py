@@ -9,6 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str)
     parser.add_argument("--ckpt_name", type=str)
+    parser.add_argument("--patch_size", type=int)
     
     parser.add_argument("--train_data_path", type=str, 
                         default="dataset/DIV2K_train.h5")
@@ -25,17 +26,11 @@ def parse_args():
 
 def main(cfg):
     if cfg.model in ["vdsr", "base"]:
-        cfg.patch_size = 41
-        cfg.batch_size = 128
-        
         if cfg.model in ["vdsr"]:
             from model.vdsr import Net
         elif cfg.model in ["base"]:
             from model.base import Net
     elif cfg.model in ["dnet", "rnet"]:
-        cfg.patch_size = 41
-        cfg.batch_size = 128
-        
         if cfg.model in ["dnet"]:
             from model.dnet import Net
         elif cfg.model in ["rnet"]:
@@ -43,7 +38,7 @@ def main(cfg):
     
     # common settings
     cfg.max_steps = 100000
-    cfg.batch_size = 128
+    cfg.batch_size = 64
     cfg.lr = 0.0001
     cfg.clip = 0.4
     cfg.decay = 30000
