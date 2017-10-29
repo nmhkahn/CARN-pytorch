@@ -42,12 +42,11 @@ def main(cfg):
             from model.rnet import Net
     
     # common settings
-    cfg.max_steps = 300000
+    cfg.max_steps = 100000
     cfg.batch_size = 128
     cfg.lr = 0.0001
     cfg.clip = 0.4
-    cfg.weight_decay = 0.0001
-    cfg.decay = 50000
+    cfg.decay = 30000
     cfg.verbose = True
             
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
