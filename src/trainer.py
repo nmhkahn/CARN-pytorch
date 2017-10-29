@@ -9,36 +9,13 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from dataset import TrainDataset, TestDataset
 
-def psnr(im1, im2):
-    def im2double(im):
-        min_val, max_val = 0, 255
-        out = (im.astype(np.float64)-min_val) / (max_val-min_val)
-        return out
-        
-    im1 = im2double(im1)
-    im2 = im2double(im2)
-    psnr = measure.compare_psnr(im1, im2, data_range=1)
-    return psnr
-
-
-def ssim(im1, im2):
-    ssim = measure.compare_ssim(im1, im2, 
-                                K1=0.01, K2=0.03,
-                                gaussian_weights=True, 
-                                sigma=1.5,
-                                use_sample_covariance=False,
-                                multichannel=True)
-
-    return ssim
-
-
 class Trainer():
     def __init__(self, model, cfg):
         self.refiner = model(cfg.scale)
         self.loss_fn = nn.MSELoss()
         self.optim = optim.Adam(
             filter(lambda p: p.requires_grad, self.refiner.parameters()), 
-            cfg.lr, weight_decay=cfg.weight_decay)
+            cfg.lr)
         
         self.train_data = TrainDataset(cfg.train_data_path, 
                                        scale=cfg.scale, 
@@ -105,7 +82,7 @@ class Trainer():
                     self.save(cfg.ckpt_dir, cfg.ckpt_name)
                     t1 = time.time()
 
-                if self.step > cfg.max_steps: break
+            if self.step > cfg.max_steps: break
         
         self.save(cfg.ckpt_dir, cfg.ckpt_name)
         if cfg.verbose:
@@ -176,3 +153,26 @@ class Trainer():
     def decay_learning_rate(self):
         lr = self.cfg.lr * (0.5 ** (self.step // self.cfg.decay))
         return lr
+
+
+def psnr(im1, im2):
+    def im2double(im):
+        min_val, max_val = 0, 255
+        out = (im.astype(np.float64)-min_val) / (max_val-min_val)
+        return out
+        
+    im1 = im2double(im1)
+    im2 = im2double(im2)
+    psnr = measure.compare_psnr(im1, im2, data_range=1)
+    return psnr
+
+
+def ssim(im1, im2):
+    ssim = measure.compare_ssim(im1, im2, 
+                                K1=0.01, K2=0.03,
+                                gaussian_weights=True, 
+                                sigma=1.5,
+                                use_sample_covariance=False,
+                                multichannel=True)
+
+    return ssim
