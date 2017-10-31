@@ -12,7 +12,14 @@ from dataset import TrainDataset, TestDataset
 class Trainer():
     def __init__(self, model, cfg):
         self.refiner = model(cfg.scale)
-        self.loss_fn = nn.MSELoss()
+        
+        if cfg.loss_fn in ["MSE"]: 
+            self.loss_fn = nn.MSELoss()
+        elif cfg.loss_fn in ["L1"]: 
+            self.loss_fn = nn.L1Loss()
+        elif cfg.loss_fn in ["Huber"]:
+            self.loss_fn = nn.HuberLoss()
+
         self.optim = optim.Adam(
             filter(lambda p: p.requires_grad, self.refiner.parameters()), 
             cfg.lr)
@@ -70,24 +77,25 @@ class Trainer():
                 
                 self.step += 1
                 if self.step % 1000 == 0:
-                    t2 = time.time()
-                    remain_step = cfg.max_steps - self.step
-                    eta = (t2-t1)*remain_step/1000/3600
-                    
                     if cfg.verbose:
                         psnr, ssim = self.evaluate()
-                        print("[{}K/{}K] PSNR:{:.2f} SSIM:{:.4f} ETA:{:.1f} hours".
+                                                
+                        t2 = time.time()
+                        remain_step = cfg.max_steps - self.step
+                        eta = (t2-t1)*remain_step/1000/3600
+                        
+                        print("[{}K/{}K] {:.2f} {:.4f} ETA: {:.1f} hours".
                             format(int(self.step/1000), int(cfg.max_steps/1000), psnr, ssim, eta))
+                        t1 = time.time()
         
                     self.save(cfg.ckpt_dir, cfg.ckpt_name)
-                    t1 = time.time()
 
             if self.step > cfg.max_steps: break
         
         self.save(cfg.ckpt_dir, cfg.ckpt_name)
         if cfg.verbose:
             psnr, ssim = self.evaluate()
-            print("[Final] PSNR: {:.2f} SSIM: {:.4f}".format(psnr, ssim))
+            print("[Final] {:.2f} {:.4f}".format(psnr, ssim))
 
     def evaluate(self):
         cfg = self.cfg

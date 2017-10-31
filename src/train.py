@@ -3,13 +3,13 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import json
 import argparse
+import importlib
 from trainer import Trainer
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str)
     parser.add_argument("--ckpt_name", type=str)
-    parser.add_argument("--patch_size", type=int)
     
     parser.add_argument("--train_data_path", type=str, 
                         default="dataset/DIV2K_train.h5")
@@ -22,30 +22,26 @@ def parse_args():
     parser.add_argument("--shave", type=int, default=20)
     parser.add_argument("--scale", type=int, default=2)
 
+    parser.add_argument("--verbose", action="store_true", default="store_true")
+
+    parser.add_argument("--patch_size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--max_steps", type=int, default=100000)
+    parser.add_argument("--decay", type=int, default=60000)
+    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--clip", type=float, default=10.0)
+
+    parser.add_argument("--loss_fn", type=str, 
+                        choices=["MSE, L1, Huber"], default="L1")
+
     return parser.parse_args()
 
 def main(cfg):
-    if cfg.model in ["vdsr", "base"]:
-        if cfg.model in ["vdsr"]:
-            from model.vdsr import Net
-        elif cfg.model in ["base"]:
-            from model.base import Net
-    elif cfg.model in ["dnet", "rnet"]:
-        if cfg.model in ["dnet"]:
-            from model.dnet import Net
-        elif cfg.model in ["rnet"]:
-            from model.rnet import Net
-    
-    # common settings
-    cfg.max_steps = 100000
-    cfg.batch_size = 64
-    cfg.lr = 0.0001
-    cfg.clip = 0.4
-    cfg.decay = 30000
-    cfg.verbose = True
-            
+    # dynamic import using --model argument
+    net = importlib.import_module("model.{}".format(cfg.model)).Net
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
-    trainer = Trainer(Net, cfg)
+    
+    trainer = Trainer(net, cfg)
     trainer.fit()
 
 if __name__ == "__main__":
