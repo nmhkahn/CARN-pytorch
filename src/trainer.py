@@ -17,8 +17,8 @@ class Trainer():
             self.loss_fn = nn.MSELoss()
         elif cfg.loss_fn in ["L1"]: 
             self.loss_fn = nn.L1Loss()
-        elif cfg.loss_fn in ["Huber"]:
-            self.loss_fn = nn.HuberLoss()
+        elif cfg.loss_fn in ["SmoothL1"]:
+            self.loss_fn = nn.SmoothL1Loss()
 
         self.optim = optim.Adam(
             filter(lambda p: p.requires_grad, self.refiner.parameters()), 

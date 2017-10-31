@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument("--clip", type=float, default=10.0)
 
     parser.add_argument("--loss_fn", type=str, 
-                        choices=["MSE, L1, Huber"], default="L1")
+                        choices=["MSE", "L1", "SmoothL1"], default="L1")
 
     return parser.parse_args()
 
