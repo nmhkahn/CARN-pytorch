@@ -34,16 +34,16 @@ class MeanShift(nn.Module):
 
 class BasicBlock(nn.Module):
     def __init__(self, 
-                 n_dims, 
+                 in_channels, out_channels,
                  dilation=1, 
-                 act=nn.LeakyReLU(0.2, True)):
+                 act=nn.ReLU()):
         super(BasicBlock, self).__init__()
 
         # assume input.shape == output.shape
         pad = dilation
 
         self.body = nn.Sequential(
-            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation, bias=False),
+            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation, bias=False),
             act
         )
 
@@ -54,43 +54,102 @@ class BasicBlock(nn.Module):
         return out
 
 
+class MDBlock(nn.Module):
+    def __init__(self, 
+                 in_channels, out_channels,
+                 dilation=[2, 4],
+                 act=nn.ReLU()):
+        super(MDBlock, self).__init__()
+
+        self.branch0 = BasicBlock(in_channels, int(out_channels/2), dilation[0], act)
+        self.branch1 = BasicBlock(in_channels, int(out_channels/2), dilation[1], act)
+
+        self.exit = nn.Sequential(
+            nn.Conv2d(out_channels, out_channels, 1, 1, 0),
+            act
+        )
+        
+        init_weights(self.modules)
+
+    def forward(self, x):
+        branch0 = self.branch0(x)
+        branch1 = self.branch1(x)
+
+        out = torch.cat((branch0, branch1), dim=1)
+        out = self.exit(out)
+        return out
+
+
 class ResidualBlock(nn.Module):
     def __init__(self, 
-                 n_dims, 
+                 in_channels, out_channels,
                  dilation=1, 
-                 act=nn.LeakyReLU(0.2, True)):
+                 act=nn.ReLU()):
         super(ResidualBlock, self).__init__()
 
         # assume input.shape == output.shape
         pad = dilation
 
         self.body = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation, bias=False),
             act,
-            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation, bias=False),
-            act,
-            nn.Conv2d(n_dims, n_dims, 3, 1, pad, dilation=dilation, bias=False),
+            nn.Conv2d(out_channels, out_channels, 3, 1, pad, dilation=dilation, bias=False),
         )
+
+        if not in_channels == out_channels:
+            self.identity = nn.Conv2d(in_channels, out_channels, 1, 1, 0)
+
+        self.act = act
 
         init_weights(self.modules)
         
     def forward(self, x):
-        out = self.body(x) + x
+        out = self.body(x)
+        if getattr(self, "identity", None):
+            x = self.identity(x)
+        out = self.act(out + x)
+        return out
+        
+        
+class MDResidualBlock(nn.Module):
+    def __init__(self, 
+                 in_channels, out_channels,
+                 dilation=[2, 4],
+                 act=nn.ReLU()):
+        super(MDResidualBlock, self).__init__()
+        
+        self.branch0 = ResidualBlock(in_channels, int(out_channels/2), dilation[0], act)
+        self.branch1 = ResidualBlock(in_channels, int(out_channels/2), dilation[1], act)
+
+        self.exit = nn.Sequential(
+            nn.Conv2d(out_channels, out_channels, 1, 1, 0),
+            act
+        )
+        
+        init_weights(self.modules)
+
+    def forward(self, x):
+        branch0 = self.branch0(x)
+        branch1 = self.branch1(x)
+
+        out = torch.cat((branch0, branch1), dim=1)
+        out = self.exit(out) + x
         return out
 
  
 class UpsampleBlock(nn.Module):
-    def __init__(self, n_dims, scale, act=False):
+    def __init__(self, n_channels, scale, act=False):
         super(UpsampleBlock, self).__init__()
 
         modules = []
         if scale == 2 or scale == 4 or scale == 8:
             for _ in range(int(math.log(scale, 2))):
-                modules += [nn.Conv2d(n_dims, 4*n_dims, 3, 1, 1)]
+                modules += [nn.Conv2d(n_channels, 4*n_channels, 3, 1, 1)]
                 modules += [nn.PixelShuffle(2)]
                 if act:
                     modules += [act]
         elif scale == 3:
-            modules += [nn.Conv2d(n_dims, 9*n_dims, 3, 1, 1)]
+            modules += [nn.Conv2d(n_channels, 9*n_channels, 3, 1, 1)]
             modules += [nn.PixelShuffle(3)]
             if act:
                 modules += [act]

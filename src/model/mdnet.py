@@ -12,7 +12,9 @@ class Net(nn.Module):
         
         self.entry = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
         self.blocks = nn.Sequential(
-            *[ops.ResidualBlock(64, 64, act=self.relu) for _ in range(9)]
+            *[ops.BasicBlock(64, 64, dilation=1, act=self.relu) for _ in range(8)],
+            *[ops.MDBlock(64, 64, dilation=[2, 4], act=self.relu) for _ in range(8)],
+            *[ops.BasicBlock(64, 64, dilation=1, act=self.relu) for _ in range(2)]
         )
         self.upsample = ops.UpsampleBlock(64, scale)
         self.exit = nn.Conv2d(64, 3, 3, 1, 1)
