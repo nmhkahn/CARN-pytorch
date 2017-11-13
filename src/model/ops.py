@@ -147,14 +147,12 @@ class MDRBlockB(nn.Module):
         self.branch1 = nn.Sequential(
             nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
             act,
-            BasicBlock(reduce_channels, reduce_channels, dilation[0], act),
-            BasicBlock(reduce_channels, reduce_channels, dilation[0], act)
+            ResidualBlock(reduce_channels, reduce_channels, dilation[0], act)
         )
         self.branch2 = nn.Sequential(
             nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
             act,
-            BasicBlock(reduce_channels, reduce_channels, dilation[1], act),
-            BasicBlock(reduce_channels, reduce_channels, dilation[1], act)
+            ResidualBlock(reduce_channels, reduce_channels, dilation[1], act)
         )
 
         self.exit = nn.Sequential(
