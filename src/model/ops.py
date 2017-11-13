@@ -210,15 +210,16 @@ class MDRBlockC(nn.Module):
                  dilation=[2, 4],
                  act=nn.ReLU()):
         super(MDRBlockC, self).__init__()
-        
-        self.branch1 = nn.Sequential(
+
+        self.entry = nn.Sequential(
             nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
             act,
+        )
+        
+        self.branch1 = nn.Sequential(
             DWResidualBlock(reduce_channels, reduce_channels, dilation[0], act)
         )
         self.branch2 = nn.Sequential(
-            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
-            act,
             DWResidualBlock(reduce_channels, reduce_channels, dilation[1], act)
         )
 
@@ -230,8 +231,9 @@ class MDRBlockC(nn.Module):
         # init_weights(self.modules)
 
     def forward(self, x):
-        branch1 = self.branch1(x)
-        branch2 = self.branch2(x)
+        reduced = self.entry(x)
+        branch1 = self.branch1(reduced)
+        branch2 = self.branch2(reduced)
 
         out = torch.cat((branch1, branch2), dim=1)
         out = self.exit(out) + x
