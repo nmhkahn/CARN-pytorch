@@ -52,6 +52,30 @@ class BasicBlock(nn.Module):
     def forward(self, x):
         out = self.body(x)
         return out
+        
+        
+class DWBasicBlock(nn.Module):
+    def __init__(self, 
+                 in_channels, out_channels,
+                 dilation=1, 
+                 act=nn.ReLU()):
+        super(DWBasicBlock, self).__init__()
+
+        # assume input.shape == output.shape
+        pad = dilation
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, 1, pad, groups=in_channels, dilation=dilation, bias=False),
+            act,
+            nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False),
+            act
+        )
+
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
 
 
 class MDBlock(nn.Module):
@@ -126,7 +150,8 @@ class DWResidualBlock(nn.Module):
             act,
             nn.Conv2d(in_channels, in_channels, 3, 1, pad, dilation=dilation, groups=in_channels, bias=False),
             act,
-            nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
+            nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False),
+            act
         )
 
         if not in_channels == out_channels:
@@ -193,7 +218,7 @@ class MDRBlockB(nn.Module):
             act
         )
         
-        # init_weights(self.modules)
+        init_weights(self.modules)
 
     def forward(self, x):
         branch1 = self.branch1(x)
@@ -228,7 +253,7 @@ class MDRBlockC(nn.Module):
             act
         )
         
-        # init_weights(self.modules)
+        init_weights(self.modules)
 
     def forward(self, x):
         reduced = self.entry(x)
