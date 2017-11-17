@@ -1,4 +1,6 @@
 import os
+import json
+import importlib
 import argparse
 import numpy as np
 from collections import OrderedDict
@@ -29,13 +31,13 @@ def save_image(tensor, filename):
     im.save(filename)
 
 
-def sample(refiner, dataset, config):
-    scale = config.scale
+def sample(net, dataset, cfg):
+    scale = cfg.scale
     for step, (hr, lr, name) in enumerate(dataset):
         if "DIV2K" in dataset.name:
             h, w = lr.size()[1:]
             h_half, w_half = int(h/2), int(w/2)
-            h_chop, w_chop = h_half + config.shave, w_half + config.shave
+            h_chop, w_chop = h_half + cfg.shave, w_half + cfg.shave
 
             lr_patch = torch.FloatTensor(4, 3, h_chop, w_chop)
             lr_patch[0].copy_(lr[:, 0:h_chop, 0:w_chop])
@@ -44,7 +46,7 @@ def sample(refiner, dataset, config):
             lr_patch[3].copy_(lr[:, h-h_chop:h, w-w_chop:w])
             lr_patch = Variable(lr_patch, volatile=True).cuda()
             
-            sr = refiner(lr_patch).data
+            sr = net(lr_patch).data
             
             h, h_half, h_chop = h*scale, h_half*scale, h_chop*scale
             w, w_half, w_chop = w*scale, w_half*scale, w_chop*scale
@@ -57,16 +59,16 @@ def sample(refiner, dataset, config):
             sr = result
         else:
             lr = Variable(lr.unsqueeze(0), volatile=True).cuda()
-            sr = refiner(lr).data[0]
+            sr = net(lr).data[0]
 
-        model_name = config.ckpt_path.split(".")[0].split("/")[-1]
-        sr_dir = os.path.join(config.sample_dir,
+        model_name = cfg.ckpt_path.split(".")[0].split("/")[-1]
+        sr_dir = os.path.join(cfg.sample_dir,
                               model_name, 
-                              config.test_data_dir.split("/")[-1],
-                              "SRx{}".format(config.scale))
-        hr_dir = os.path.join(config.sample_dir,
+                              cfg.test_data_dir.split("/")[-1],
+                              "SRx{}".format(cfg.scale))
+        hr_dir = os.path.join(cfg.sample_dir,
                               model_name, 
-                              config.test_data_dir.split("/")[-1],
+                              cfg.test_data_dir.split("/")[-1],
                               "HR")
         
         if not os.path.exists(sr_dir):
@@ -83,39 +85,26 @@ def sample(refiner, dataset, config):
         print("Saved {}".format(sr_im_path))
 
 
-def main(config):
-    if config.model in ["mdrn"]:
-        from model.mdrn import MDRN
-        refiner = MDRN(config.scale)
-    elif config.model in ["base"]:
-        from model.base import MDRN
-        refiner = MDRN(config.scale)
-    elif config.model in ["mdrn_multi"]:
-        from model.mdrn_multi import MDRN
-        refiner = MDRN(config.scale)
-    elif config.model in ["mdrn_multi_v2"]:
-        from model.mdrn_multi_v2 import MDRN
-        refiner = MDRN(config.scale) 
-    else:
-        raise NotImplementedError("{} is not in our list".format(model_name))
+def main(cfg):
+    net = importlib.import_module("model.{}".format(cfg.model)).Net(cfg.scale)
+    print(json.dumps(vars(cfg), indent=4, sort_keys=True))
     
-    state_dict = torch.load(config.ckpt_path)
+    state_dict = torch.load(cfg.ckpt_path)
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
         name = k
         # name = k[7:] # remove "module."
         new_state_dict[name] = v
-    refiner.load_state_dict(new_state_dict)
 
-    if config.cuda:
-        refiner.cuda()
+    net.load_state_dict(new_state_dict)
+    net.cuda()
     
-    dataset = TestDataset(config.test_data_dir, 
-                          config.scale, 
-                          config.self_ensemble)
-    sample(refiner, dataset, config)
+    dataset = TestDataset(cfg.test_data_dir, 
+                          cfg.scale, 
+                          cfg.self_ensemble)
+    sample(net, dataset, cfg)
  
 
 if __name__ == "__main__":
-    config = parse_args()
-    main(config)
+    cfg = parse_args()
+    main(cfg)
