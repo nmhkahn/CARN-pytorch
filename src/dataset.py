@@ -64,15 +64,20 @@ class TrainDataset(data.Dataset):
         return len(self.hr)
         
 
-# TODO: need self ensemble method
 class TestDataset(data.Dataset):
     def __init__(self, dirname, scale, self_ensemble=False):
         super(TestDataset, self).__init__()
 
         self.name  = dirname.split("/")[-1]
         self.scale = scale
-        self.hr = glob.glob(os.path.join(dirname, "HR/*.png"))
-        self.lr = glob.glob(os.path.join(dirname, "x{}/*.png".format(scale)))
+        
+        if "DIV" in self.name:
+            self.hr = glob.glob(os.path.join(dirname, "HR/*.png"))
+            self.lr = glob.glob(os.path.join(dirname, "x{}/*.png".format(scale)))
+        else:
+            all_files = glob.glob(os.path.join(dirname, "image_SRF_{}/*.png".format(scale)))
+            self.hr = [name for name in all_files if "HR" in name]
+            self.lr = [name for name in all_files if "LR" in name]
 
         self.hr.sort()
         self.lr.sort()
