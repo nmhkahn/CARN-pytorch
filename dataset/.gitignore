@@ -1,3 +1,2 @@
-*.h5
-DIV2K_train/
-DIV2K_valid/
+*
+!.gitignore
