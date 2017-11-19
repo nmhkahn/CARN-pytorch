@@ -241,23 +241,17 @@ class MDRBlockC(nn.Module):
 
  
 class UpsampleBlock(nn.Module):
-    def __init__(self, n_channels, scale, act=False):
+    def __init__(self, n_channels, scale, act=nn.ReLU()):
         super(UpsampleBlock, self).__init__()
 
         modules = []
         if scale == 2 or scale == 4 or scale == 8:
             for _ in range(int(math.log(scale, 2))):
-                modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1)]
-                modules += [nn.Conv2d(n_channels, 4*n_channels, 1, 1, 0)]
+                modules += [nn.Conv2d(n_channels, 4*n_channels, 1, 1, 0), act]
                 modules += [nn.PixelShuffle(2)]
-                if act:
-                    modules += [act]
         elif scale == 3:
-            modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1)]
-            modules += [nn.Conv2d(n_channels, 9*n_channels, 1, 1, 0)]
+            modules += [nn.Conv2d(n_channels, 9*n_channels, 1, 1, 0), act]
             modules += [nn.PixelShuffle(3)]
-            if act:
-                modules += [act]
         self.body = nn.Sequential(*modules)
 
         init_weights(self.modules)
