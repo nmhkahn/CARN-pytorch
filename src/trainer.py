@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import numpy as np
 import skimage.measure as measure
@@ -11,7 +12,7 @@ from dataset import TrainDataset, TestDataset
 
 class Trainer():
     def __init__(self, model, cfg):
-        self.refiner = model(cfg.scale)
+        self.refiner = model()
         
         if cfg.loss_fn in ["MSE"]: 
             self.loss_fn = nn.MSELoss()
@@ -27,17 +28,16 @@ class Trainer():
         self.train_data = TrainDataset(cfg.train_data_path, 
                                        scale=cfg.scale, 
                                        size=cfg.patch_size)
-        self.test_data  = TestDataset(cfg.test_data_dir, 
-                                      scale=cfg.scale)
+        self.test_data  = [TestDataset(cfg.test_data_dir, scale=i) for i in range(2, 5)]
 
         self.train_loader = DataLoader(self.train_data,
                                        batch_size=cfg.batch_size,
                                        num_workers=1,
                                        shuffle=True, drop_last=True)
-        self.test_loader  = DataLoader(self.test_data,
-                                       batch_size=1,
-                                       num_workers=1,
-                                       shuffle=False)
+        self.test_loader  = [DataLoader(data,
+                                        batch_size=1,
+                                        num_workers=1,
+                                        shuffle=False) for data in self.test_data]
         
         self.refiner = self.refiner.cuda()
         self.loss_fn = self.loss_fn.cuda()
@@ -59,11 +59,14 @@ class Trainer():
         t1 = time.time()
         while True:
             for inputs in self.train_loader:
-                hr = Variable(inputs[0], requires_grad=False)
-                lr = Variable(inputs[1], requires_grad=False)
+                # only use one of multi-scale data
+                # i know this is stupid but just temporary
+                scale = random.randint(2, 4)
+                hr = Variable(inputs[scale-2][0], requires_grad=False)
+                lr = Variable(inputs[scale-2][1], requires_grad=False)
 
                 hr, lr = hr.cuda(), lr.cuda()
-                sr = refiner(lr)
+                sr = refiner(lr, scale)
                 loss = self.loss_fn(sr, hr)
                 
                 self.optim.zero_grad()
@@ -76,32 +79,33 @@ class Trainer():
                     param_group["lr"] = lr
                 
                 self.step += 1
-                if self.step % 1000 == 0:
+                if self.step % 10 == 0:
                     if cfg.verbose:
-                        psnr, ssim = self.evaluate()
+                        psnr = [self.evaluate(scale=i) for i in range(2, 5)]
                                                 
                         t2 = time.time()
                         remain_step = cfg.max_steps - self.step
                         eta = (t2-t1)*remain_step/1000/3600
                         
-                        print("[{}K/{}K] {:.2f} {:.4f} ETA: {:.1f} hours".
-                            format(int(self.step/1000), int(cfg.max_steps/1000), psnr, ssim, eta))
+                        if type(psnr) is list or type(psnr) is tuple:
+                            print("[{}K/{}K] {:.2f} {:.2f} {:.2f} ETA: {:.1f} hours".
+                                  format(int(self.step/1000), int(cfg.max_steps/1000), 
+                                         psnr[0], psnr[1], psnr[2], eta))
+                        else:
+                            print("[{}K/{}K] {:.2f} ETA: {:.1f} hours".
+                                  format(int(self.step/1000), int(cfg.max_steps/1000), psnr, eta))
                         t1 = time.time()
         
                     self.save(cfg.ckpt_dir, cfg.ckpt_name)
 
             if self.step > cfg.max_steps: break
-        
-        self.save(cfg.ckpt_dir, cfg.ckpt_name)
-        if cfg.verbose:
-            psnr, ssim = self.evaluate()
-            print("[Final] {:.2f} {:.4f}".format(psnr, ssim))
 
-    def evaluate(self):
+    def evaluate(self, scale=2):
         cfg = self.cfg
-        mean_psnr, mean_ssim = 0, 0
-
-        for step, inputs in enumerate(self.test_loader):
+        mean_psnr = 0
+        
+        test_loader = self.test_loader[scale-2]
+        for step, inputs in enumerate(test_loader):
             hr = inputs[0].squeeze(0)
             lr = inputs[1].squeeze(0)
             name = inputs[2]
@@ -118,10 +122,11 @@ class Trainer():
             lr_patch[3].copy_(lr[:, h-h_chop:h, w-w_chop:w])
             lr_patch = Variable(lr_patch, volatile=True).cuda()
             
-            sr = self.refiner(lr_patch).data
+            # run refine process in here!
+            sr = self.refiner(lr_patch, scale).data
             
-            h, h_half, h_chop = h*cfg.scale, h_half*cfg.scale, h_chop*cfg.scale
-            w, w_half, w_chop = w*cfg.scale, w_half*cfg.scale, w_chop*cfg.scale
+            h, h_half, h_chop = h*scale, h_half*scale, h_chop*scale
+            w, w_half, w_chop = w*scale, w_half*scale, w_chop*scale
             
             # merge splited patch images
             result = torch.FloatTensor(3, h, w).cuda()
@@ -134,15 +139,13 @@ class Trainer():
             hr = hr.cpu().mul(255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
             sr = sr.cpu().mul(255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
 
-            # evaluate PSNR and SSIM
-            bnd = 6+cfg.scale
+            # evaluate PSNR
+            bnd = 6+scale
             im1 = hr[bnd:-bnd, bnd:-bnd]
             im2 = sr[bnd:-bnd, bnd:-bnd]
-
             mean_psnr += psnr(im1, im2) / len(self.test_data)
-            mean_ssim += ssim(im1, im2) / len(self.test_data)
 
-        return mean_psnr, mean_ssim
+        return mean_psnr
 
     def load(self, path):
         self.refiner.load_state_dict(torch.load(path))

@@ -15,8 +15,8 @@ def random_crop(hr, lr, size, scale):
     hsize = size*scale
     hx, hy = x*scale, y*scale
 
-    crop_lr = lr[y:y+size, x:x+size]
-    crop_hr = hr[hy:hy+hsize, hx:hx+hsize]
+    crop_lr = lr[y:y+size, x:x+size].copy()
+    crop_hr = hr[hy:hy+hsize, hx:hx+hsize].copy()
 
     return crop_hr, crop_lr
 
@@ -31,10 +31,11 @@ def random_flip_and_rotate(im1, im2):
         im2 = np.fliplr(im2)
 
     angle = random.choice([0, 1, 2, 3])
-    im1 = np.rot90(im1, angle).copy()
-    im2 = np.rot90(im2, angle).copy()
+    im1 = np.rot90(im1, angle)
+    im2 = np.rot90(im2, angle)
 
-    return im1, im2
+    # have to copy before be called by transform function
+    return im1.copy(), im2.copy()
 
 
 class TrainDataset(data.Dataset):
@@ -42,11 +43,18 @@ class TrainDataset(data.Dataset):
         super(TrainDataset, self).__init__()
 
         self.size = size
-        self.scale = scale
 
         h5f = h5py.File(path, "r")
+        
         self.hr = [v[:] for v in h5f["HR"].values()]
-        self.lr = [v[:] for v in h5f["x{}".format(scale)].values()]
+        # perform multi-scale training
+        if type(scale) is tuple or type(scale) is list:
+            self.scale = scale
+            self.lr = [[v[:] for v in h5f["x{}".format(i)].values()] for i in range(2, 5)]
+        else:
+            self.scale = [scale]
+            self.lr = [[v[:] for v in h5f["x{}".format(scale)].values()]]
+        
         h5f.close()
 
         self.transform = transforms.Compose([
@@ -54,11 +62,14 @@ class TrainDataset(data.Dataset):
         ])
 
     def __getitem__(self, index):
-        hr, lr = self.hr[index], self.lr[index]
-        hr, lr = random_crop(hr, lr, self.size, self.scale)
-        hr, lr = random_flip_and_rotate(hr, lr)
+        size = self.size
+        scale = self.scale
 
-        return self.transform(hr), self.transform(lr)
+        item = [(self.hr[index], self.lr[i][index]) for i in range(len(self.lr))]
+        item = [random_crop(hr, lr, size, scale[i]) for i, (hr, lr) in enumerate(item)]
+        item = [random_flip_and_rotate(hr, lr) for hr, lr in item]
+        
+        return [(self.transform(hr), self.transform(lr)) for hr, lr in item]
 
     def __len__(self):
         return len(self.hr)

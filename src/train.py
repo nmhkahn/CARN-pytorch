@@ -37,6 +37,9 @@ def parse_args():
     return parser.parse_args()
 
 def main(cfg):
+    if cfg.scale == 0:
+        cfg.scale = [2, 3, 4]
+
     # dynamic import using --model argument
     net = importlib.import_module("model.{}".format(cfg.model)).Net
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
