@@ -143,7 +143,7 @@ class Trainer():
             bnd = 6+scale
             im1 = hr[bnd:-bnd, bnd:-bnd]
             im2 = sr[bnd:-bnd, bnd:-bnd]
-            mean_psnr += psnr(im1, im2) / len(self.test_data)
+            mean_psnr += psnr(im1, im2) / len(self.test_data[0])
 
         return mean_psnr
 
