@@ -79,7 +79,7 @@ class Trainer():
                     param_group["lr"] = lr
                 
                 self.step += 1
-                if self.step % 10 == 0:
+                if self.step % 1000 == 0:
                     if cfg.verbose:
                         psnr = [self.evaluate(scale=i) for i in range(2, 5)]
                                                 
