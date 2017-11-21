@@ -2,7 +2,7 @@ import torch.nn as nn
 import model.ops as ops
 
 class Net(nn.Module):
-    def __init__(self, scale):
+    def __init__(self):
         super(Net, self).__init__()
 
         self.sub_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=True)
@@ -34,12 +34,16 @@ class Net(nn.Module):
             nn.Conv2d(64, 64, 1, 1, 0, bias=False),
             self.relu
         )
-        self.upsample = ops.UpsampleBlock(64, scale)
+        
+        self.upsamplex2 = ops.UpsampleBlock(64, 2)
+        self.upsamplex3 = ops.UpsampleBlock(64, 3)
+        self.upsamplex4 = ops.UpsampleBlock(64, 4)
+
         self.exit = nn.Sequential(
             nn.Conv2d(64, 3, 3, 1, 1)
         )
                 
-    def forward(self, x):
+    def forward(self, x, scale):
         x = self.sub_mean(x)
         x = self.entry(x)
         
@@ -49,10 +53,15 @@ class Net(nn.Module):
         o4 = self.block3(o3)
 
         out = self.combine(o1+o2+o3+o4) + x
-
-        out = self.upsample(out)
-        out = self.exit(out)
         
+        if scale == 2:
+            out = self.upsamplex2(out)
+        elif scale == 3:
+            out = self.upsamplex3(out)
+        elif scale == 4:
+            out = self.upsamplex4(out)
+
+        out = self.exit(out)
         out = self.add_mean(out)
 
         return out
