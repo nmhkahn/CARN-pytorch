@@ -59,12 +59,17 @@ class Trainer():
         t1 = time.time()
         while True:
             for inputs in self.train_loader:
-                # only use one of multi-scale data
-                # i know this is stupid but just temporary
-                scale = random.randint(2, 4)
-                hr = Variable(inputs[scale-2][0], requires_grad=False)
-                lr = Variable(inputs[scale-2][1], requires_grad=False)
-
+                if cfg.scale > 0:
+                    scale = cfg.scale
+                    hr, lr = inputs[-1][0], inputs[-1][1]
+                else:
+                    # only use one of multi-scale data
+                    # i know this is stupid but just temporary
+                    scale = random.randint(2, 4)
+                    hr, lr = inputs[scale-2][0], inputs[scale-2][1]
+                
+                hr = Variable(hr, requires_grad=False)
+                lr = Variable(lr, requires_grad=False)
                 hr, lr = hr.cuda(), lr.cuda()
                 sr = refiner(lr, scale)
                 loss = self.loss_fn(sr, hr)
