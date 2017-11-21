@@ -86,19 +86,20 @@ class Trainer():
                 self.step += 1
                 if self.step % 1000 == 0:
                     if cfg.verbose:
-                        psnr = [self.evaluate(scale=i) for i in range(2, 5)]
-                                                
                         t2 = time.time()
                         remain_step = cfg.max_steps - self.step
                         eta = (t2-t1)*remain_step/1000/3600
                         
-                        if type(psnr) is list or type(psnr) is tuple:
+                        if cfg.scale > 0:
+                            psnr = self.evaluate(scale=cfg.scale)
+                            print("[{}K/{}K] {:.2f} ETA: {:.1f} hours".
+                                  format(int(self.step/1000), int(cfg.max_steps/1000), psnr, eta))
+                        else:    
+                            psnr = [self.evaluate(scale=i) for i in range(2, 5)]
                             print("[{}K/{}K] {:.2f} {:.2f} {:.2f} ETA: {:.1f} hours".
                                   format(int(self.step/1000), int(cfg.max_steps/1000), 
                                          psnr[0], psnr[1], psnr[2], eta))
-                        else:
-                            print("[{}K/{}K] {:.2f} ETA: {:.1f} hours".
-                                  format(int(self.step/1000), int(cfg.max_steps/1000), psnr, eta))
+                            
                         t1 = time.time()
         
                     self.save(cfg.ckpt_dir, cfg.ckpt_name)
