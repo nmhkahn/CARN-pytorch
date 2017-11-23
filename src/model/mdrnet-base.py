@@ -16,6 +16,16 @@ class Net(nn.Module):
             ops.BasicBlock(64, 64, dilation=1, act=self.relu)
         )
 
+        self.stemx2 = nn.Sequential(
+            *[ops.DWResidualBlock(64, 64, dilation=1, act=self.relu) for _ in range(2)]
+        )
+        self.stemx3 = nn.Sequential(
+            *[ops.DWResidualBlock(64, 64, dilation=1, act=self.relu) for _ in range(3)]
+        )
+        self.stemx4 = nn.Sequential(
+            *[ops.DWResidualBlock(64, 64, dilation=1, act=self.relu) for _ in range(4)]
+        )
+
         self.block1 = nn.Sequential(
             *[ops.MDRBlockB(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
             ops.BasicBlock(64, 64, dilation=1, act=self.relu)
@@ -46,8 +56,15 @@ class Net(nn.Module):
     def forward(self, x, scale):
         x = self.sub_mean(x)
         x = self.entry(x)
+
+        if scale == 2:
+            stem = self.stemx2(x)
+        elif scale == 3:
+            stem = self.stemx3(x)
+        elif scale == 4:
+            stem = self.stemx4(x)
         
-        o1 = self.stem(x)
+        o1 = self.stem(stem)
         o2 = self.block1(o1)
         o3 = self.block2(o2)
         o4 = self.block3(o3)
