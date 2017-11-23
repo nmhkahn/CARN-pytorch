@@ -64,7 +64,7 @@ class Net(nn.Module):
         elif scale == 4:
             stem = self.stemx4(x)
         
-        o1 = self.stem(x)
+        o1 = self.stem(stem)
         o2 = self.block1(o1)
         o3 = self.block2(o2)
         o4 = self.block3(o3)
