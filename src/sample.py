@@ -46,7 +46,7 @@ def sample(net, dataset, cfg):
             lr_patch[3].copy_(lr[:, h-h_chop:h, w-w_chop:w])
             lr_patch = Variable(lr_patch, volatile=True).cuda()
             
-            sr = net(lr_patch).data
+            sr = net(lr_patch, cfg.scale).data
             
             h, h_half, h_chop = h*scale, h_half*scale, h_chop*scale
             w, w_half, w_chop = w*scale, w_half*scale, w_chop*scale
@@ -59,7 +59,7 @@ def sample(net, dataset, cfg):
             sr = result
         else:
             lr = Variable(lr.unsqueeze(0), volatile=True).cuda()
-            sr = net(lr).data[0]
+            sr = net(lr, cfg.scale).data[0]
 
         model_name = cfg.ckpt_path.split(".")[0].split("/")[-1]
         sr_dir = os.path.join(cfg.sample_dir,
@@ -86,7 +86,7 @@ def sample(net, dataset, cfg):
 
 
 def main(cfg):
-    net = importlib.import_module("model.{}".format(cfg.model)).Net(cfg.scale)
+    net = importlib.import_module("model.{}".format(cfg.model)).Net()
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
     
     state_dict = torch.load(cfg.ckpt_path)
