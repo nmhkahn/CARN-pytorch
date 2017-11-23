@@ -43,12 +43,11 @@ class TrainDataset(data.Dataset):
         super(TrainDataset, self).__init__()
 
         self.size = size
-
         h5f = h5py.File(path, "r")
         
         self.hr = [v[:] for v in h5f["HR"].values()]
         # perform multi-scale training
-        if type(scale) is tuple or type(scale) is list:
+        if scale == 0:
             self.scale = scale
             self.lr = [[v[:] for v in h5f["x{}".format(i)].values()] for i in range(2, 5)]
         else:
@@ -63,7 +62,7 @@ class TrainDataset(data.Dataset):
 
     def __getitem__(self, index):
         size = self.size
-        scale = self.scale
+        scale = range(2, 5)
 
         item = [(self.hr[index], self.lr[i][index]) for i in range(len(self.lr))]
         item = [random_crop(hr, lr, size, scale[i]) for i, (hr, lr) in enumerate(item)]
