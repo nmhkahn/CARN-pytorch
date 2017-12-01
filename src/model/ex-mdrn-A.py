@@ -29,16 +29,7 @@ class Net(nn.Module):
             ops.BasicBlock(64, 64, dilation=1, act=self.relu)
         )
         
-        self.combine = nn.Sequential(
-            ops.BasicBlock(64, 64, dilation=1, act=self.relu),
-            nn.Conv2d(64, 64, 1, 1, 0, bias=False),
-            self.relu
-        )
-
-        self.upsamplex2 = ops.UpsampleBlock(64, 2)
-        self.upsamplex3 = ops.UpsampleBlock(64, 3)
-        self.upsamplex4 = ops.UpsampleBlock(64, 4)
-
+        self.upsamplex2 = ops.UpsampleBlock(64, 2, reduce=False)
         self.exit = nn.Sequential(
             nn.Conv2d(64, 3, 3, 1, 1)
         )
@@ -52,14 +43,9 @@ class Net(nn.Module):
         o3 = self.block2(o2)
         o4 = self.block3(o3)
 
-        out = self.combine(o1+o2+o3+o4) + x
+        out = o4 + x
 
-        if scale == 2:
-            out = self.upsamplex2(out)
-        elif scale == 3:
-            out = self.upsamplex3(out)
-        elif scale == 4:
-            out = self.upsamplex4(out)
+        out = self.upsamplex2(out)
 
         out = self.exit(out)
         out = self.add_mean(out)
