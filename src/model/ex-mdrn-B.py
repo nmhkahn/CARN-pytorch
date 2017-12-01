@@ -16,11 +16,11 @@ class Net(nn.Module):
         )
 
         self.block1 = nn.Sequential(
-            *[ops.MDRBlockA(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
+            *[ops.MDRBlockB(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
             ops.BasicBlock(64, 64, dilation=1, act=self.relu)
         )
         self.block2 = nn.Sequential(
-            *[ops.MDRBlockA(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
+            *[ops.MDRBlockB(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
             ops.BasicBlock(64, 64, dilation=1, act=self.relu)
         )
         self.block3 = nn.Sequential(

@@ -16,15 +16,21 @@ class Net(nn.Module):
         )
 
         self.block1 = nn.Sequential(
-            *[ops.MDRBlockA(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
+            *[ops.MDRBlockB(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
             ops.BasicBlock(64, 64, dilation=1, act=self.relu)
         )
         self.block2 = nn.Sequential(
-            *[ops.MDRBlockA(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
+            *[ops.MDRBlockB(64, 32, 64, dilation=[2, 4], act=self.relu) for _ in range(4)],
             ops.BasicBlock(64, 64, dilation=1, act=self.relu)
         )
         self.block3 = nn.Sequential(
             ops.ResidualBlock(64, 64, dilation=1, act=self.relu),
+        )
+        
+        self.combine = nn.Sequential(
+            ops.BasicBlock(64, 64, dilation=1, act=self.relu),
+            nn.Conv2d(64, 64, 1, 1, 0, bias=False),
+            self.relu
         )
         
         self.upsamplex2 = ops.UpsampleBlock(64, 2, reduce=False)
@@ -40,8 +46,8 @@ class Net(nn.Module):
         o2 = self.block1(o1)
         o3 = self.block2(o2)
         o4 = self.block3(o3)
-
-        out = o4 + x
+        
+        out = self.combine(o1+o2+o3+o4) + x
 
         out = self.upsamplex2(out)
 
