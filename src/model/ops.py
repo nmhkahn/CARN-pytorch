@@ -167,6 +167,8 @@ class MDRBlockA(nn.Module):
             nn.Conv2d(reduce_channels*2, out_channels, 1, 1, 0, bias=False),
             act
         )
+
+        self.act = act
         
         init_weights(self.modules)
 
@@ -175,7 +177,7 @@ class MDRBlockA(nn.Module):
         branch2 = self.branch2(x)
 
         out = torch.cat((branch1, branch2), dim=1)
-        out = self.exit(out) + x
+        out = self.act(self.exit(out) + x)
         return out
         
         
@@ -201,6 +203,8 @@ class MDRBlockB(nn.Module):
             nn.Conv2d(reduce_channels*2, out_channels, 1, 1, 0, bias=False),
             act
         )
+
+        self.act = act
         
         init_weights(self.modules)
 
@@ -209,7 +213,7 @@ class MDRBlockB(nn.Module):
         branch2 = self.branch2(x)
 
         out = torch.cat((branch1, branch2), dim=1)
-        out = self.exit(out) + x
+        out = self.act(self.exit(out) + x)
         return out
 
 
@@ -236,6 +240,8 @@ class MDRBlockC(nn.Module):
             nn.Conv2d(reduce_channels*2, out_channels, 1, 1, 0, bias=False),
             act
         )
+
+        self.act = act
         
         init_weights(self.modules)
 
@@ -245,7 +251,7 @@ class MDRBlockC(nn.Module):
         branch2 = self.branch2(reduced)
 
         out = torch.cat((branch1, branch2), dim=1)
-        out = self.exit(out) + x
+        out = self.act(self.exit(out) + x)
         return out
 
 
