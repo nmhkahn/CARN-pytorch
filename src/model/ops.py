@@ -145,26 +145,36 @@ class DWResidualBlock(nn.Module):
         
 class MDRBlockA(nn.Module):
     def __init__(self, 
-                 in_channels, out_channels,
+                 in_channels, reduce_channels, out_channels,
                  dilation=[2, 4],
                  act=nn.ReLU()):
         super(MDRBlockA, self).__init__()
         
-        self.branch0 = ResidualBlock(in_channels, int(out_channels/2), dilation[0], act)
-        self.branch1 = ResidualBlock(in_channels, int(out_channels/2), dilation[1], act)
+        self.branch1 = nn.Sequential(
+            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
+            act,
+            BasicBlock(reduce_channels, reduce_channels, dilation[0], act),
+            BasicBlock(reduce_channels, reduce_channels, dilation[0], act)
+        )
+        self.branch2 = nn.Sequential(
+            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
+            act,
+            BasicBlock(reduce_channels, reduce_channels, dilation[1], act),
+            BasicBlock(reduce_channels, reduce_channels, dilation[1], act)
+        )
 
         self.exit = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, 1, 1, 0, bias=False),
+            nn.Conv2d(reduce_channels*2, out_channels, 1, 1, 0, bias=False),
             act
         )
         
         init_weights(self.modules)
 
     def forward(self, x):
-        branch0 = self.branch0(x)
         branch1 = self.branch1(x)
+        branch2 = self.branch2(x)
 
-        out = torch.cat((branch0, branch1), dim=1)
+        out = torch.cat((branch1, branch2), dim=1)
         out = self.exit(out) + x
         return out
         
@@ -243,7 +253,6 @@ class MDRBlockC(nn.Module):
 class UpsampleBlock(nn.Module):
     def __init__(self, n_channels, scale, reduce=True, act=nn.ReLU()):
         super(UpsampleBlock, self).__init__()
-
 
         modules = []
         if scale == 2 or scale == 4 or scale == 8:
