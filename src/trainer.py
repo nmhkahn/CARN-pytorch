@@ -21,9 +21,9 @@ class Trainer():
         elif cfg.loss_fn in ["SmoothL1"]:
             self.loss_fn = nn.SmoothL1Loss()
 
-        self.optim = optim.Adam(
+        self.optim = optim.SGD(
             filter(lambda p: p.requires_grad, self.refiner.parameters()), 
-            cfg.lr)
+            cfg.lr, weight_decay=cfg.wd, momentum=0.9)
         
         self.train_data = TrainDataset(cfg.train_data_path, 
                                        scale=cfg.scale, 
@@ -57,6 +57,7 @@ class Trainer():
                                   device_ids=range(cfg.num_gpu))
         
         t1 = time.time()
+        learning_rate = cfg.lr
         while True:
             for inputs in self.train_loader:
                 if cfg.scale > 0:
@@ -76,12 +77,13 @@ class Trainer():
                 
                 self.optim.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm(self.refiner.parameters(), cfg.clip)
+                clip_value = cfg.clip_theta / learning_rate
+                nn.utils.clip_grad_norm(self.refiner.parameters(), clip_value)
                 self.optim.step()
 
-                lr = self.decay_learning_rate()
+                learning_rate = self.decay_learning_rate()
                 for param_group in self.optim.param_groups:
-                    param_group["lr"] = lr
+                    param_group["lr"] = learning_rate
                 
                 self.step += 1
                 if self.step % 1000 == 0:
