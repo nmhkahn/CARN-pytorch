@@ -75,7 +75,7 @@ class Net(nn.Module):
         self.entry = nn.Conv2d(3, 96, 3, 1, 1)
 
         self.layers = nn.Sequential(
-            *[Block(96, 64, 96, 4, act=self.relu) for _ in range(18)],
+            *[ops.ResidualBlock(96, 64, 96, group=16) for _ in range(18)],
             ops.BasicBlock(96, 96, dilation=1, act=self.relu)
         )
         

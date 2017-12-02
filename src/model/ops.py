@@ -32,56 +32,10 @@ class MeanShift(nn.Module):
         return x
 
 
-class BasicBlock(nn.Module):
-    def __init__(self, 
-                 in_channels, out_channels,
-                 dilation=1, 
-                 act=nn.ReLU()):
-        super(BasicBlock, self).__init__()
-
-        # assume input.shape == output.shape
-        pad = dilation
-
-        self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation, bias=False),
-            act
-        )
-
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x)
-        return out
-        
-        
-class DWBasicBlock(nn.Module):
-    def __init__(self, 
-                 in_channels, out_channels,
-                 dilation=1, 
-                 act=nn.ReLU()):
-        super(DWBasicBlock, self).__init__()
-
-        # assume input.shape == output.shape
-        pad = dilation
-
-        self.body = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, 3, 1, pad, groups=in_channels, dilation=dilation, bias=False),
-            act,
-            nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False),
-            act
-        )
-
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x)
-        return out
-
-
 class ResidualBlock(nn.Module):
     def __init__(self, 
-                 in_channels, out_channels,
-                 dilation=1, 
+                 in_channels, reduce_channels, out_channels,
+                 dilation=1, group=1,
                  act=nn.ReLU()):
         super(ResidualBlock, self).__init__()
 
@@ -89,16 +43,17 @@ class ResidualBlock(nn.Module):
         pad = dilation
 
         self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation, bias=False),
+            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0),
             act,
-            nn.Conv2d(out_channels, out_channels, 3, 1, pad, dilation=dilation, bias=False),
+            nn.Conv2d(reduce_channels, reduce_channels, 3, 1, pad, groups=group, dilation=dilation),
+            act,
+            nn.Conv2d(reduce_channels, out_channels, 1, 1, 0),
         )
 
         if not in_channels == out_channels:
             self.identity = nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
 
         self.act = act
-
         init_weights(self.modules)
         
     def forward(self, x):
@@ -107,155 +62,62 @@ class ResidualBlock(nn.Module):
             x = self.identity(x)
         out = self.act(out + x)
         return out
-        
-        
-class DWResidualBlock(nn.Module):
-    def __init__(self, 
-                 in_channels, out_channels,
-                 dilation=1, 
-                 act=nn.ReLU()):
-        super(DWResidualBlock, self).__init__()
-
-        # assume input.shape == output.shape
-        pad = dilation
-
-        self.body = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, 3, 1, pad, dilation=dilation, groups=in_channels, bias=False),
-            act,
-            nn.Conv2d(in_channels, in_channels, 3, 1, pad, dilation=dilation, groups=in_channels, bias=False),
-            act,
-            nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False),
-            act
-        )
-
-        if not in_channels == out_channels:
-            self.identity = nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
-
-        self.act = act
-
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x)
-        if getattr(self, "identity", None):
-            x = self.identity(x)
-        out = self.act(out + x)
-        return out
-        
-        
-class MDRBlockA(nn.Module):
-    def __init__(self, 
-                 in_channels, reduce_channels, out_channels,
-                 dilation=[2, 4],
-                 act=nn.ReLU()):
-        super(MDRBlockA, self).__init__()
-        
-        self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
-            act,
-            BasicBlock(reduce_channels, reduce_channels, dilation[0], act),
-            BasicBlock(reduce_channels, reduce_channels, dilation[0], act)
-        )
-        self.branch2 = nn.Sequential(
-            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
-            act,
-            BasicBlock(reduce_channels, reduce_channels, dilation[1], act),
-            BasicBlock(reduce_channels, reduce_channels, dilation[1], act)
-        )
-
-        self.exit = nn.Sequential(
-            nn.Conv2d(reduce_channels*2, out_channels, 1, 1, 0, bias=False),
-            act
-        )
-
-        self.act = act
-        
-        init_weights(self.modules)
-
-    def forward(self, x):
-        branch1 = self.branch1(x)
-        branch2 = self.branch2(x)
-
-        out = torch.cat((branch1, branch2), dim=1)
-        out = self.act(self.exit(out) + x)
-        return out
-        
-        
-class MDRBlockB(nn.Module):
-    def __init__(self, 
-                 in_channels, reduce_channels, out_channels,
-                 dilation=[2, 4],
-                 act=nn.ReLU()):
-        super(MDRBlockB, self).__init__()
-        
-        self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
-            act,
-            ResidualBlock(reduce_channels, reduce_channels, dilation[0], act)
-        )
-        self.branch2 = nn.Sequential(
-            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
-            act,
-            ResidualBlock(reduce_channels, reduce_channels, dilation[1], act)
-        )
-
-        self.exit = nn.Sequential(
-            nn.Conv2d(reduce_channels*2, out_channels, 1, 1, 0, bias=False),
-            act
-        )
-
-        self.act = act
-        
-        init_weights(self.modules)
-
-    def forward(self, x):
-        branch1 = self.branch1(x)
-        branch2 = self.branch2(x)
-
-        out = torch.cat((branch1, branch2), dim=1)
-        out = self.act(self.exit(out) + x)
-        return out
-
-
-class MDRBlockC(nn.Module):
-    def __init__(self, 
-                 in_channels, reduce_channels, out_channels,
-                 dilation=[2, 4],
-                 act=nn.ReLU()):
-        super(MDRBlockC, self).__init__()
-
-        self.entry = nn.Sequential(
-            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0, bias=False),
-            act,
-        )
-        
-        self.branch1 = nn.Sequential(
-            DWResidualBlock(reduce_channels, reduce_channels, dilation[0], act)
-        )
-        self.branch2 = nn.Sequential(
-            DWResidualBlock(reduce_channels, reduce_channels, dilation[1], act)
-        )
-
-        self.exit = nn.Sequential(
-            nn.Conv2d(reduce_channels*2, out_channels, 1, 1, 0, bias=False),
-            act
-        )
-
-        self.act = act
-        
-        init_weights(self.modules)
-
-    def forward(self, x):
-        reduced = self.entry(x)
-        branch1 = self.branch1(reduced)
-        branch2 = self.branch2(reduced)
-
-        out = torch.cat((branch1, branch2), dim=1)
-        out = self.act(self.exit(out) + x)
-        return out
-
-
+       
  
+class MDRBlock(nn.Module):
+    def __init__(self, 
+                 in_channels, reduce_channels, out_channels,
+                 num_groups, dilation,
+                 act=nn.ReLU()):
+        super(Block, self).__init__()
+
+        branch_channels = int(reduce_channels/4)
+        
+        self.branch1 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
+            act,
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, 1, dilation=dilation[0], groups=num_groups),
+            act,
+        )
+        self.branch2 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
+            act,
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, 2, dilation=dilation[1], groups=num_groups),
+            act,
+        )
+        self.branch3 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
+            act,
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, 3, dilation=dilation[2], groups=num_groups),
+            act,
+        )
+        self.branch4 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
+            act,
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, 4, dilation=dilation[3], groups=num_groups),
+            act,
+        )
+        
+        self.combine = nn.Sequential(
+            nn.Conv2d(reduce_channels, out_channels, 1, 1, 0),
+            act
+        )
+
+        self.act = act
+        init_weights(self.modules)
+
+    def forward(self, x):
+        b1 = self.branch1(x)
+        b2 = self.branch2(x)
+        b3 = self.branch3(x)
+        b4 = self.branch4(x)
+
+        out = torch.cat((b1, b2, b3, b4), dim=1)
+        out = self.combine(out)
+        out += x
+        return out
+
+
 class UpsampleBlock(nn.Module):
     def __init__(self, n_channels, scale, reduce=True, act=nn.ReLU()):
         super(UpsampleBlock, self).__init__()
