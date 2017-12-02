@@ -32,6 +32,28 @@ class MeanShift(nn.Module):
         return x
 
 
+class BasicBlock(nn.Module):
+    def __init__(self,
+                 in_channels, out_channels,
+                 ksize=3, dilation=1, 
+                 act=nn.ReLU()):
+        super(BasicBlock, self).__init__()
+
+        # assume input.shape == output.shape
+        pad = dilation
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, ksize, 1, pad, dilation=dilation, bias=False),
+            act
+        )
+
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
+
+
 class ResidualBlock(nn.Module):
     def __init__(self, 
                  in_channels, reduce_channels, out_channels,
@@ -69,32 +91,34 @@ class MDRBlock(nn.Module):
                  in_channels, reduce_channels, out_channels,
                  num_groups, dilation,
                  act=nn.ReLU()):
-        super(Block, self).__init__()
+        super(MDRBlock, self).__init__()
 
         branch_channels = int(reduce_channels/4)
+
+        pad = [d for d in dilation]
         
         self.branch1 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
             act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, 1, dilation=dilation[0], groups=num_groups),
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[0], dilation=dilation[0], groups=num_groups),
             act,
         )
         self.branch2 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
             act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, 2, dilation=dilation[1], groups=num_groups),
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[1], dilation=dilation[1], groups=num_groups),
             act,
         )
         self.branch3 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
             act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, 3, dilation=dilation[2], groups=num_groups),
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[2], dilation=dilation[2], groups=num_groups),
             act,
         )
         self.branch4 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
             act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, 4, dilation=dilation[3], groups=num_groups),
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[3], dilation=dilation[3], groups=num_groups),
             act,
         )
         
