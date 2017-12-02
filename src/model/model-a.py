@@ -16,7 +16,8 @@ class Net(nn.Module):
             ops.BasicBlock(96, 96, dilation=1, act=self.relu)
         )
         
-        self.upsamplex2 = ops.UpsampleBlock(96, 2, reduce=True)
+        self.upsamplex4 = ops.UpsampleBlock(96, 4, reduce=True)
+        
         self.exit = nn.Sequential(
             nn.Conv2d(96, 3, 3, 1, 1)
         )
@@ -26,7 +27,7 @@ class Net(nn.Module):
         x = self.entry(x)
         
         out = self.body(x) 
-        out = self.upsamplex2(out)
+        out = self.upsamplex4(out)
 
         out = self.exit(out)
         out = self.add_mean(out)
