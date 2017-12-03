@@ -26,11 +26,11 @@ def parse_args():
 
     parser.add_argument("--patch_size", type=int, default=64)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--max_steps", type=int, default=100000)
-    parser.add_argument("--decay", type=int, default=20000)
-    parser.add_argument("--lr", type=float, default=0.1)
+    parser.add_argument("--max_steps", type=int, default=200000)
+    parser.add_argument("--decay", type=int, default=100000)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--wd", type=float, default=0.0001)
-    parser.add_argument("--clip_theta", type=float, default=0.01)
+    parser.add_argument("--clip", type=float, default=10.0)
 
     parser.add_argument("--loss_fn", type=str, 
                         choices=["MSE", "L1", "SmoothL1"], default="L1")
