@@ -21,9 +21,9 @@ class Trainer():
         elif cfg.loss_fn in ["SmoothL1"]:
             self.loss_fn = nn.SmoothL1Loss()
 
-        self.optim = optim.Adam(
+        self.optim = optim.SGD(
             filter(lambda p: p.requires_grad, self.refiner.parameters()), 
-            cfg.lr, weight_decay=cfg.wd)
+            cfg.lr, weight_decay=cfg.wd, momentum=0.9)
         
         self.train_data = TrainDataset(cfg.train_data_path, 
                                        scale=cfg.scale, 
@@ -77,7 +77,8 @@ class Trainer():
                 
                 self.optim.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm(self.refiner.parameters(), cfg.clip)
+                clip_value = cfg.clip_theta / learing_rate
+                nn.utils.clip_grad_norm(self.refiner.parameters(), clip_value)
                 self.optim.step()
 
                 learning_rate = self.decay_learning_rate()
@@ -169,7 +170,7 @@ class Trainer():
         torch.save(self.refiner.state_dict(), save_path)
 
     def decay_learning_rate(self):
-        lr = self.cfg.lr * (0.5 ** (self.step // self.cfg.decay))
+        lr = self.cfg.lr * (0.1 ** (self.step // self.cfg.decay))
         return lr
 
 
