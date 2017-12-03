@@ -43,7 +43,7 @@ class BasicBlock(nn.Module):
         pad = dilation
 
         self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, ksize, 1, pad, dilation=dilation, bias=False),
+            nn.Conv2d(in_channels, out_channels, ksize, 1, pad, dilation=dilation),
             act
         )
 
@@ -124,7 +124,6 @@ class MDRBlock(nn.Module):
         
         self.combine = nn.Sequential(
             nn.Conv2d(reduce_channels, out_channels, 1, 1, 0),
-            act
         )
 
         self.act = act
@@ -138,7 +137,7 @@ class MDRBlock(nn.Module):
 
         out = torch.cat((b1, b2, b3, b4), dim=1)
         out = self.combine(out)
-        out += x
+        out = self.act(out + x)
         return out
 
 
