@@ -12,9 +12,11 @@ class Net(nn.Module):
         self.entry = nn.Conv2d(3, 96, 3, 1, 1)
 
         self.body = nn.Sequential(
-            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 1, 1], act=self.relu) for _ in range(6)],
-            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 2, 2], act=self.relu) for _ in range(6)],
-            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 4, 4], act=self.relu) for _ in range(6)],
+            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 1, 1], act=self.relu) for _ in range(3)],
+            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 1, 1], act=self.relu) for _ in range(3)],
+            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 2, 2], act=self.relu) for _ in range(4)],
+            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 4, 4], act=self.relu) for _ in range(4)],
+            *[ops.MDRBlock(96, 64, 96, 4, dilation=[1, 1, 2, 2], act=self.relu) for _ in range(4)],
             ops.BasicBlock(96, 96, dilation=1, act=self.relu)
         )
         

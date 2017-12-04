@@ -21,9 +21,9 @@ class Trainer():
         elif cfg.loss_fn in ["SmoothL1"]:
             self.loss_fn = nn.SmoothL1Loss()
 
-        self.optim = optim.SGD(
+        self.optim = optim.Adam(
             filter(lambda p: p.requires_grad, self.refiner.parameters()), 
-            cfg.lr, weight_decay=cfg.wd, momentum=0.9)
+            cfg.lr)
         
         self.train_data = TrainDataset(cfg.train_data_path, 
                                        scale=cfg.scale, 
@@ -77,8 +77,7 @@ class Trainer():
                 
                 self.optim.zero_grad()
                 loss.backward()
-                clip_value = cfg.clip_theta / learing_rate
-                nn.utils.clip_grad_norm(self.refiner.parameters(), clip_value)
+                nn.utils.clip_grad_norm(self.refiner.parameters(), cfg.clip)
                 self.optim.step()
 
                 learning_rate = self.decay_learning_rate()
