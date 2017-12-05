@@ -48,8 +48,8 @@ class TrainDataset(data.Dataset):
         self.hr = [v[:] for v in h5f["HR"].values()]
         # perform multi-scale training
         if scale == 0:
-            self.scale = scale
-            self.lr = [[v[:] for v in h5f["x{}".format(i)].values()] for i in range(2, 5)]
+            self.scale = [2, 3, 4]
+            self.lr = [[v[:] for v in h5f["x{}".format(i)].values()] for i in self.scale]
         else:
             self.scale = [scale]
             self.lr = [[v[:] for v in h5f["x{}".format(scale)].values()]]
@@ -63,9 +63,8 @@ class TrainDataset(data.Dataset):
     def __getitem__(self, index):
         size = self.size
 
-        item = [(self.hr[index], self.lr[i][index]) for i in range(len(self.lr))]
+        item = [(self.hr[index], self.lr[i][index]) for i, _ in enumerate(self.lr)]
         item = [random_crop(hr, lr, size, self.scale[i]) for i, (hr, lr) in enumerate(item)]
-        
         item = [random_flip_and_rotate(hr, lr) for hr, lr in item]
         
         return [(self.transform(hr), self.transform(lr)) for hr, lr in item]

@@ -89,36 +89,25 @@ class ResidualBlock(nn.Module):
 class MDRBlock(nn.Module):
     def __init__(self, 
                  in_channels, reduce_channels, out_channels,
-                 num_groups, dilation,
+                 dilation, group,
                  act=nn.ReLU()):
         super(MDRBlock, self).__init__()
 
-        branch_channels = int(reduce_channels/4)
+        branch_channels = int(reduce_channels/2)
+        cardinality = int(group/2)
 
         pad = [d for d in dilation]
         
         self.branch1 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
             act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[0], dilation=dilation[0], groups=num_groups),
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[0], dilation=dilation[0], groups=cardinality),
             act,
         )
         self.branch2 = nn.Sequential(
             nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
             act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[1], dilation=dilation[1], groups=num_groups),
-            act,
-        )
-        self.branch3 = nn.Sequential(
-            nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
-            act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[2], dilation=dilation[2], groups=num_groups),
-            act,
-        )
-        self.branch4 = nn.Sequential(
-            nn.Conv2d(in_channels, branch_channels, 1, 1, 0),
-            act,
-            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[3], dilation=dilation[3], groups=num_groups),
+            nn.Conv2d(branch_channels, branch_channels, 3, 1, pad[1], dilation=dilation[1], groups=cardinality),
             act,
         )
         
@@ -132,18 +121,41 @@ class MDRBlock(nn.Module):
     def forward(self, x):
         b1 = self.branch1(x)
         b2 = self.branch2(x)
-        b3 = self.branch3(x)
-        b4 = self.branch4(x)
 
-        out = torch.cat((b1, b2, b3, b4), dim=1)
+        out = torch.cat((b1, b2), dim=1)
         out = self.combine(out)
         out = self.act(out + x)
         return out
 
 
 class UpsampleBlock(nn.Module):
-    def __init__(self, n_channels, scale, reduce=True, act=nn.ReLU()):
+    def __init__(self, n_channels, scale, multi_scale, reduce=True, act=nn.ReLU()):
         super(UpsampleBlock, self).__init__()
+
+        if multi_scale:
+            self.up2 = _UpsampleBlock(n_channels, scale=2, reduce=reduce, act=act)
+            self.up3 = _UpsampleBlock(n_channels, scale=3, reduce=reduce, act=act)
+            self.up4 = _UpsampleBlock(n_channels, scale=4, reduce=reduce, act=act)
+        else:
+            self.up =  _UpsampleBlock(n_channels, scale=scale, reduce=reduce, act=act)
+
+        self.multi_scale = multi_scale
+
+    def forward(self, x, scale):
+        if self.multi_scale:
+            if scale == 2:
+                return self.up2(x)
+            elif scale == 3:
+                return self.up3(x)
+            elif scale == 4:
+                return self.up4(x)
+        else:
+            return self.up(x)
+
+
+class _UpsampleBlock(nn.Module):
+    def __init__(self, n_channels, scale, reduce=True, act=nn.ReLU()):
+        super(_UpsampleBlock, self).__init__()
 
         modules = []
         if scale == 2 or scale == 4 or scale == 8:

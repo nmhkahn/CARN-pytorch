@@ -12,7 +12,10 @@ from dataset import TrainDataset, TestDataset
 
 class Trainer():
     def __init__(self, model, cfg):
-        self.refiner = model()
+        if cfg.scale > 0:
+            self.refiner = model(scale=cfg.scale)
+        else:
+            self.refiner = model(multi_scale=True)
         
         if cfg.loss_fn in ["MSE"]: 
             self.loss_fn = nn.MSELoss()
@@ -169,7 +172,7 @@ class Trainer():
         torch.save(self.refiner.state_dict(), save_path)
 
     def decay_learning_rate(self):
-        lr = self.cfg.lr * (0.1 ** (self.step // self.cfg.decay))
+        lr = self.cfg.lr * (0.5 ** (self.step // self.cfg.decay))
         return lr
 
 
