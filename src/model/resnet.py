@@ -7,6 +7,8 @@ class Net(nn.Module):
         
         scale = kwargs.get("scale")
         multi_scale = kwargs.get("multi_scale")
+        group = kwargs.get("group", 1)
+        reduce_upsample = kwargs.get("reduce_upsample", False)
 
         self.sub_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=True)
         self.add_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=False)
@@ -15,11 +17,10 @@ class Net(nn.Module):
         self.entry = nn.Conv2d(3, 64, 3, 1, 1)
 
         self.body = nn.Sequential(
-            *[ops.ResidualBlock(64, 48, 64, group=1) for _ in range(18)],
-            ops.BasicBlock(64, 64, dilation=1, act=self.relu)
+            *[ops.ResidualBlock(64, 48, 64, group=group) for _ in range(18)],
         )
         
-        self.upsample = ops.UpsampleBlock(64, scale=scale, multi_scale=multi_scale, reduce=False)
+        self.upsample = ops.UpsampleBlock(64, scale=scale, multi_scale=multi_scale, reduce=reduce_upsample)
         
         self.exit = nn.Sequential(
             nn.Conv2d(64, 3, 3, 1, 1)

@@ -24,6 +24,9 @@ def parse_args():
 
     parser.add_argument("--verbose", action="store_true", default="store_true")
 
+    parser.add_argument("--group", type=int, default=1)
+    parser.add_argument("--reduce_upsample", type=bool, default=False)
+    
     parser.add_argument("--patch_size", type=int, default=64)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--max_steps", type=int, default=200000)
