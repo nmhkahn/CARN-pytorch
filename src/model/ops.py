@@ -34,11 +34,11 @@ class BasicBlock(nn.Module):
     def __init__(self,
                  in_channels, out_channels,
                  ksize=3, dilation=1, 
-                 act=nn.ReLU()):
+                 act=nn.ReLU(inplace=True)):
         super(BasicBlock, self).__init__()
 
         # assume input.shape == output.shape
-        pad = dilation
+        pad = dilation if ksize > 1 else 0
 
         self.body = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, ksize, 1, pad, dilation=dilation),
@@ -52,40 +52,84 @@ class BasicBlock(nn.Module):
         return out
 
 
+class DWBasicBlock(nn.Module):
+    def __init__(self, 
+                 in_channels, out_channels,
+                 ksize=3, dilation=1, group=1,
+                 act=nn.ReLU(inplace=True)):
+        super(DWBasicBlock, self).__init__()
+
+        # assume input.shape == output.shape
+        pad = dilation
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, ksize, 1, pad, groups=group, dilation=dilation),
+            act,
+            nn.Conv2d(in_channels, out_channels, 1, 1, 0),
+            act
+        )
+
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
+
+
 class ResidualBlock(nn.Module):
     def __init__(self, 
-                 in_channels, reduce_channels, out_channels,
-                 dilation=1, group=1,
-                 act=nn.ReLU()):
+                 in_channels, out_channels,
+                 dilation=1,
+                 act=nn.ReLU(inplace=True)):
         super(ResidualBlock, self).__init__()
 
         # assume input.shape == output.shape
         pad = dilation
 
         self.body = nn.Sequential(
-            nn.Conv2d(in_channels, reduce_channels, 1, 1, 0),
+            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation),
             act,
-            nn.Conv2d(reduce_channels, reduce_channels, 3, 1, pad, groups=group, dilation=dilation),
-            act,
-            nn.Conv2d(reduce_channels, out_channels, 1, 1, 0),
+            nn.Conv2d(out_channels, out_channels, 3, 1, pad, dilation=dilation),
         )
-
-        if not in_channels == out_channels:
-            self.identity = nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
 
         self.act = act
         init_weights(self.modules)
         
     def forward(self, x):
         out = self.body(x)
-        if getattr(self, "identity", None):
-            x = self.identity(x)
         out = self.act(out + x)
         return out
-       
+
+
+class DWResidualBlock(nn.Module):
+    def __init__(self, 
+                 in_channels, out_channels,
+                 dilation=1, group=1,
+                 act=nn.ReLU(inplace=True)):
+        super(DWResidualBlock, self).__init__()
+
+        # assume input.shape == output.shape
+        pad = dilation
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation, groups=group),
+            act,
+            nn.Conv2d(out_channels, out_channels, 3, 1, pad, dilation=dilation, groups=group),
+            act,
+            nn.Conv2d(out_channels, out_channels, 1, 1, 0),
+        )
+
+        self.act = act
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x)
+        out = self.act(out + x)
+        return out
+
 
 class UpsampleBlock(nn.Module):
-    def __init__(self, n_channels, scale, multi_scale, reduce=True, act=nn.ReLU()):
+    def __init__(self, n_channels, scale, multi_scale, reduce=True, act=nn.ReLU(inplace=True)):
         super(UpsampleBlock, self).__init__()
 
         if multi_scale:
