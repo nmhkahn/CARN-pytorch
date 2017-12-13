@@ -181,14 +181,17 @@ class Trainer():
             
             sr_im_path = os.path.join(sr_dir, "{}".format(name))
             hr_im_path = os.path.join(hr_dir, "{}".format(name))
-            misc.imsave(sr_im_path, sr)
-            misc.imsave(hr_im_path, hr)
-
+            
             # evaluate PSNR
             bnd = 6+scale
             im1 = hr[bnd:-bnd, bnd:-bnd]
             im2 = sr[bnd:-bnd, bnd:-bnd]
             mean_psnr += psnr(im1, im2) / len(test_data)
+
+            if "DIV2K" in test_data_dir and step > 10:
+                continue
+            misc.imsave(sr_im_path, sr)
+            misc.imsave(hr_im_path, hr)
 
         return mean_psnr
 
