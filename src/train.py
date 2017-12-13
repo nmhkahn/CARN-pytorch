@@ -13,10 +13,10 @@ def parse_args():
     
     parser.add_argument("--train_data_path", type=str, 
                         default="dataset/DIV2K_train.h5")
-    parser.add_argument("--test_data_dir", type=str, 
-                        default="dataset/DIV2K_valid")
     parser.add_argument("--ckpt_dir", type=str,
                         default="checkpoint")
+    parser.add_argument("--sample_dir", type=str,
+                        default="sample/")
     
     parser.add_argument("--num_gpu", type=int, default=1)
     parser.add_argument("--shave", type=int, default=20)

@@ -44,7 +44,7 @@ class Net(nn.Module):
         self.b3 = Block(64, 64)
         self.c1 = ops.BasicBlock(64*2, 64, 1)
         self.c2 = ops.BasicBlock(64*3, 64, 1)
-        self.c2 = ops.BasicBlock(64*4, 64, 1)
+        self.c3 = ops.BasicBlock(64*4, 64, 1)
         
         self.upsample = ops.UpsampleBlock(64, scale=scale, 
                                           multi_scale=multi_scale, 

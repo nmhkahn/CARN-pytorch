@@ -2,6 +2,7 @@ import os
 import random
 import time
 import numpy as np
+import scipy.misc as misc
 import skimage.measure as measure
 import torch
 import torch.nn as nn
@@ -35,16 +36,11 @@ class Trainer():
         self.train_data = TrainDataset(cfg.train_data_path, 
                                        scale=cfg.scale, 
                                        size=cfg.patch_size)
-        self.test_data  = [TestDataset(cfg.test_data_dir, scale=i) for i in range(2, 5)]
-
         self.train_loader = DataLoader(self.train_data,
                                        batch_size=cfg.batch_size,
                                        num_workers=1,
                                        shuffle=True, drop_last=True)
-        self.test_loader  = [DataLoader(data,
-                                        batch_size=1,
-                                        num_workers=1,
-                                        shuffle=False) for data in self.test_data]
+        
         
         self.refiner = self.refiner.cuda()
         self.loss_fn = self.loss_fn.cuda()
@@ -99,11 +95,17 @@ class Trainer():
                         eta = (t2-t1)*remain_step/1000/3600
                         
                         if cfg.scale > 0:
-                            psnr = self.evaluate(scale=cfg.scale)
+                            psnr = self.evaluate("dataset/Set5", scale=cfg.scale, num_step=self.step)
+                            psnr = self.evaluate("dataset/Set14", scale=cfg.scale, num_step=self.step)
+                            psnr = self.evaluate("dataset/B100", scale=cfg.scale, num_step=self.step)
+                            psnr = self.evaluate("dataset/DIV2K_valid", scale=cfg.scale, num_step=self.step)
                             print("[{}K/{}K] {:.2f} ETA: {:.1f} hours".
                                   format(int(self.step/1000), int(cfg.max_steps/1000), psnr, eta))
                         else:    
-                            psnr = [self.evaluate(scale=i) for i in range(2, 5)]
+                            psnr = [self.evaluate("dataset/Set5", scale=i, num_step=self.step) for i in range(2, 5)]
+                            psnr = [self.evaluate("dataset/Set14", scale=i, num_step=self.step) for i in range(2, 5)]
+                            psnr = [self.evaluate("dataset/B100", scale=i, num_step=self.step) for i in range(2, 5)]
+                            psnr = [self.evaluate("dataset/DIV2K_valid", scale=i, num_step=self.step) for i in range(2, 5)]
                             print("[{}K/{}K] {:.2f} {:.2f} {:.2f} ETA: {:.1f} hours".
                                   format(int(self.step/1000), int(cfg.max_steps/1000), 
                                          psnr[0], psnr[1], psnr[2], eta))
@@ -114,15 +116,20 @@ class Trainer():
 
             if self.step > cfg.max_steps: break
 
-    def evaluate(self, scale=2):
+    def evaluate(self, test_data_dir, scale=2, num_step=0):
         cfg = self.cfg
         mean_psnr = 0
         
-        test_loader = self.test_loader[scale-2]
+        test_data   = TestDataset(test_data_dir, scale=scale)
+        test_loader = DataLoader(test_data,
+                                 batch_size=1,
+                                 num_workers=1,
+                                 shuffle=False)
+
         for step, inputs in enumerate(test_loader):
             hr = inputs[0].squeeze(0)
             lr = inputs[1].squeeze(0)
-            name = inputs[2]
+            name = inputs[2][0]
 
             h, w = lr.size()[1:]
             h_half, w_half = int(h/2), int(w/2)
@@ -152,12 +159,36 @@ class Trainer():
 
             hr = hr.cpu().mul(255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
             sr = sr.cpu().mul(255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
+            
+            sr_dir = os.path.join(cfg.sample_dir,
+                                  cfg.ckpt_name,
+                                  "x{}".format(scale),
+                                  str(num_step),
+                                  test_data_dir.split("/")[-1],
+                                  "SRx{}".format(scale))
+            hr_dir = os.path.join(cfg.sample_dir,
+                                  cfg.ckpt_name, 
+                                  "x{}".format(scale),
+                                  str(num_step),
+                                  test_data_dir.split("/")[-1],
+                                  "HR")
+        
+            if not os.path.exists(sr_dir):
+                os.makedirs(sr_dir)
+            
+            if not os.path.exists(hr_dir):
+                os.makedirs(hr_dir)
+            
+            sr_im_path = os.path.join(sr_dir, "{}".format(name))
+            hr_im_path = os.path.join(hr_dir, "{}".format(name))
+            misc.imsave(sr_im_path, sr)
+            misc.imsave(hr_im_path, hr)
 
             # evaluate PSNR
             bnd = 6+scale
             im1 = hr[bnd:-bnd, bnd:-bnd]
             im2 = sr[bnd:-bnd, bnd:-bnd]
-            mean_psnr += psnr(im1, im2) / len(self.test_data[0])
+            mean_psnr += psnr(im1, im2) / len(test_data)
 
         return mean_psnr
 
