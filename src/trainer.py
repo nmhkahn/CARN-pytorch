@@ -162,14 +162,12 @@ class Trainer():
             
             sr_dir = os.path.join(cfg.sample_dir,
                                   cfg.ckpt_name,
-                                  "x{}".format(scale),
                                   str(num_step),
                                   test_data_dir.split("/")[-1],
                                   "x{}".format(scale),
                                   "SR")
             hr_dir = os.path.join(cfg.sample_dir,
                                   cfg.ckpt_name, 
-                                  "x{}".format(scale),
                                   str(num_step),
                                   test_data_dir.split("/")[-1],
                                   "x{}".format(scale),
