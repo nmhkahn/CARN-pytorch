@@ -67,10 +67,12 @@ def sample(net, dataset, cfg):
         sr_dir = os.path.join(cfg.sample_dir,
                               model_name, 
                               cfg.test_data_dir.split("/")[-1],
-                              "SRx{}".format(cfg.scale))
+                              "x{}".format(cfg.scale),
+                              "SR")
         hr_dir = os.path.join(cfg.sample_dir,
                               model_name, 
                               cfg.test_data_dir.split("/")[-1],
+                              "x{}".format(cfg.scale),
                               "HR")
         
         if not os.path.exists(sr_dir):

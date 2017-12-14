@@ -95,16 +95,16 @@ class Trainer():
                         eta = (t2-t1)*remain_step/1000/3600
                         
                         if cfg.scale > 0:
-                            psnr = self.evaluate("dataset/Set5", scale=cfg.scale, num_step=self.step)
-                            psnr = self.evaluate("dataset/Set14", scale=cfg.scale, num_step=self.step)
-                            psnr = self.evaluate("dataset/B100", scale=cfg.scale, num_step=self.step)
-                            psnr = self.evaluate("dataset/DIV2K_valid", scale=cfg.scale, num_step=self.step)
+                            self.evaluate("dataset/Set5", scale=cfg.scale, num_step=self.step)
+                            self.evaluate("dataset/Set14", scale=cfg.scale, num_step=self.step)
+                            self.evaluate("dataset/B100", scale=cfg.scale, num_step=self.step)
+                            self.evaluate("dataset/DIV2K_valid", scale=cfg.scale, num_step=self.step)
                             print("[{}K/{}K] {:.2f} ETA: {:.1f} hours".
                                   format(int(self.step/1000), int(cfg.max_steps/1000), psnr, eta))
                         else:    
-                            psnr = [self.evaluate("dataset/Set5", scale=i, num_step=self.step) for i in range(2, 5)]
-                            psnr = [self.evaluate("dataset/Set14", scale=i, num_step=self.step) for i in range(2, 5)]
-                            psnr = [self.evaluate("dataset/B100", scale=i, num_step=self.step) for i in range(2, 5)]
+                            [self.evaluate("dataset/Set5", scale=i, num_step=self.step) for i in range(2, 5)]
+                            [self.evaluate("dataset/Set14", scale=i, num_step=self.step) for i in range(2, 5)]
+                            [self.evaluate("dataset/B100", scale=i, num_step=self.step) for i in range(2, 5)]
                             psnr = [self.evaluate("dataset/DIV2K_valid", scale=i, num_step=self.step) for i in range(2, 5)]
                             print("[{}K/{}K] {:.2f} {:.2f} {:.2f} ETA: {:.1f} hours".
                                   format(int(self.step/1000), int(cfg.max_steps/1000), 
@@ -165,12 +165,14 @@ class Trainer():
                                   "x{}".format(scale),
                                   str(num_step),
                                   test_data_dir.split("/")[-1],
-                                  "SRx{}".format(scale))
+                                  "x{}".format(scale),
+                                  "SR")
             hr_dir = os.path.join(cfg.sample_dir,
                                   cfg.ckpt_name, 
                                   "x{}".format(scale),
                                   str(num_step),
                                   test_data_dir.split("/")[-1],
+                                  "x{}".format(scale),
                                   "HR")
         
             if not os.path.exists(sr_dir):
