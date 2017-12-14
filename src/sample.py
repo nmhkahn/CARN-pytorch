@@ -14,6 +14,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str)
     parser.add_argument("--ckpt_path", type=str)
+    parser.add_argument("--group", type=int, default=1)
+    parser.add_argument("--reduce_upsample", action="store_true", default=False)
     parser.add_argument("--sample_dir", type=str)
     parser.add_argument("--test_data_dir", type=str, default="dataset/Set5")
     parser.add_argument("--cuda", action="store_true")
@@ -86,7 +88,10 @@ def sample(net, dataset, cfg):
 
 
 def main(cfg):
-    net = importlib.import_module("model.{}".format(cfg.model)).Net()
+    module = importlib.import_module("model.{}".format(cfg.model))
+    net = module.Net(multi_scale=True, 
+                     group=cfg.group, 
+                     reduce_upsample=cfg.reduce_upsample)
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
     
     state_dict = torch.load(cfg.ckpt_path)
