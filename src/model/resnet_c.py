@@ -12,14 +12,17 @@ class Block(nn.Module):
         self.b1 = ops.ResidualBlock(64, 64)
         self.b2 = ops.ResidualBlock(64, 64)
         self.b3 = ops.ResidualBlock(64, 64)
-
+        
+        self.act = act
         self.combine = ops.BasicBlock(64*4, 64, 1)
 
     def forward(self, x):
         b0 = x
         b1 = self.b1(b0)
         b2 = self.b2(b1)
+        b2 = b0 + b2
         b3 = self.b3(b2)
+        b3 = b0 + b1 + b3
 
         out = self.combine(torch.cat([b0, b1, b2, b3], dim=1))
         return out
@@ -42,9 +45,6 @@ class Net(nn.Module):
         self.b1 = Block(64, 64)
         self.b2 = Block(64, 64)
         self.b3 = Block(64, 64)
-        self.c1 = ops.BasicBlock(64*2, 64, 1)
-        self.c2 = ops.BasicBlock(64*3, 64, 1)
-        self.c3 = ops.BasicBlock(64*4, 64, 1)
         
         self.upsample = ops.UpsampleBlock(64, scale=scale, 
                                           multi_scale=multi_scale, 
@@ -57,21 +57,9 @@ class Net(nn.Module):
     def forward(self, x, scale):
         x = self.sub_mean(x)
         x = self.entry(x)
-        c0 = o0 = x
-
-        b1 = self.b1(o0)
-        c1 = torch.cat([c0, b1], dim=1)
-        o1 = self.c1(c1)
         
-        b2 = self.b2(o1)
-        c2 = torch.cat([c1, b2], dim=1)
-        o2 = self.c2(c2)
-        
-        b3 = self.b3(o2)
-        c3 = torch.cat([c2, b3], dim=1)
-        o3 = self.c3(c3)
-
-        out = self.upsample(o3, scale=scale)
+        out = self.b3(self.b2(self.b1(x)))
+        out = self.upsample(out, scale=scale)
 
         out = self.exit(out)
         out = self.add_mean(out)
