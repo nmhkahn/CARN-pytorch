@@ -63,6 +63,8 @@ class Trainer():
         learning_rate = cfg.lr
         while True:
             for inputs in self.train_loader:
+                self.refiner.train()
+
                 if cfg.scale > 0:
                     scale = cfg.scale
                     hr, lr = inputs[-1][0], inputs[-1][1]
@@ -88,30 +90,30 @@ class Trainer():
                     param_group["lr"] = learning_rate
                 
                 self.step += 1
-                if self.step % 1000 == 0:
-                    if cfg.verbose:
+                if cfg.verbose and self.step % 1000 == 0:
+                    if cfg.scale > 0:
+                        self.evaluate("dataset/Set5", scale=cfg.scale, num_step=self.step)
+                        psnr = self.evaluate("dataset/Set14", scale=cfg.scale, num_step=self.step)
+                        self.evaluate("dataset/B100", scale=cfg.scale, num_step=self.step)
+                        
                         t2 = time.time()
                         remain_step = cfg.max_steps - self.step
                         eta = (t2-t1)*remain_step/1000/3600
+                        print("[{}K/{}K] {:.2f} ETA: {:.1f} hours".
+                              format(int(self.step/1000), int(cfg.max_steps/1000), psnr, eta))
+                    else:    
+                        [self.evaluate("dataset/Set5", scale=i, num_step=self.step) for i in range(2, 5)]
+                        psnr = [self.evaluate("dataset/Set14", scale=i, num_step=self.step) for i in range(2, 5)]
+                        [self.evaluate("dataset/B100", scale=i, num_step=self.step) for i in range(2, 5)]
                         
-                        if cfg.scale > 0:
-                            self.evaluate("dataset/Set5", scale=cfg.scale, num_step=self.step)
-                            self.evaluate("dataset/Set14", scale=cfg.scale, num_step=self.step)
-                            self.evaluate("dataset/B100", scale=cfg.scale, num_step=self.step)
-                            self.evaluate("dataset/DIV2K_valid", scale=cfg.scale, num_step=self.step)
-                            print("[{}K/{}K] {:.2f} ETA: {:.1f} hours".
-                                  format(int(self.step/1000), int(cfg.max_steps/1000), psnr, eta))
-                        else:    
-                            [self.evaluate("dataset/Set5", scale=i, num_step=self.step) for i in range(2, 5)]
-                            [self.evaluate("dataset/Set14", scale=i, num_step=self.step) for i in range(2, 5)]
-                            [self.evaluate("dataset/B100", scale=i, num_step=self.step) for i in range(2, 5)]
-                            psnr = [self.evaluate("dataset/DIV2K_valid", scale=i, num_step=self.step) for i in range(2, 5)]
-                            print("[{}K/{}K] {:.2f} {:.2f} {:.2f} ETA: {:.1f} hours".
-                                  format(int(self.step/1000), int(cfg.max_steps/1000), 
-                                         psnr[0], psnr[1], psnr[2], eta))
+                        t2 = time.time()
+                        remain_step = cfg.max_steps - self.step
+                        eta = (t2-t1)*remain_step/1000/3600
+                        print("[{}K/{}K] {:.2f} {:.2f} {:.2f} ETA: {:.1f} hours".
+                              format(int(self.step/1000), int(cfg.max_steps/1000), 
+                                     psnr[0], psnr[1], psnr[2], eta))
                             
-                        t1 = time.time()
-        
+                    t1 = time.time()
                     self.save(cfg.ckpt_dir, cfg.ckpt_name)
 
             if self.step > cfg.max_steps: break
@@ -119,6 +121,7 @@ class Trainer():
     def evaluate(self, test_data_dir, scale=2, num_step=0):
         cfg = self.cfg
         mean_psnr = 0
+        self.refiner.eval()
         
         test_data   = TestDataset(test_data_dir, scale=scale)
         test_loader = DataLoader(test_data,
