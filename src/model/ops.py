@@ -87,7 +87,6 @@ class ResidualBlock(nn.Module):
         pad = dilation
 
         self.body = nn.Sequential(
-            act,
             nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation),
             act,
             nn.Conv2d(out_channels, out_channels, 3, 1, pad, dilation=dilation),
@@ -98,7 +97,7 @@ class ResidualBlock(nn.Module):
         
     def forward(self, x):
         out = self.body(x)
-        out = out + x
+        out = self.act(out + x)
         return out
 
 
