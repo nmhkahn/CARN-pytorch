@@ -21,7 +21,6 @@ def parse_args():
     parser.add_argument("--cuda", action="store_true")
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--shave", type=int, default=20)
-    parser.add_argument("--self_ensemble", action="store_true")
 
     return parser.parse_args()
 
@@ -106,9 +105,7 @@ def main(cfg):
     net.load_state_dict(new_state_dict)
     net.cuda()
     
-    dataset = TestDataset(cfg.test_data_dir, 
-                          cfg.scale, 
-                          cfg.self_ensemble)
+    dataset = TestDataset(cfg.test_data_dir, cfg.scale)
     sample(net, dataset, cfg)
  
 

@@ -74,7 +74,7 @@ class TrainDataset(data.Dataset):
         
 
 class TestDataset(data.Dataset):
-    def __init__(self, dirname, scale, self_ensemble=False):
+    def __init__(self, dirname, scale):
         super(TestDataset, self).__init__()
 
         self.name  = dirname.split("/")[-1]
