@@ -95,7 +95,8 @@ class Trainer():
                         self.evaluate("dataset/Set5", scale=cfg.scale, num_step=self.step)
                         self.evaluate("dataset/Set14", scale=cfg.scale, num_step=self.step)
                         self.evaluate("dataset/B100", scale=cfg.scale, num_step=self.step)
-                        psnr = self.evaluate("dataset/DIV2K_valid", scale=cfg.scale, num_step=self.step)
+                        psnr = self.evaluate("dataset/DIV2K/DIV2K_valid", 
+                                             scale=cfg.scale, num_step=self.step)
                         
                         t2 = time.time()
                         remain_step = cfg.max_steps - self.step
@@ -106,7 +107,8 @@ class Trainer():
                         [self.evaluate("dataset/Set5", scale=i, num_step=self.step) for i in range(2, 5)]
                         [self.evaluate("dataset/Set14", scale=i, num_step=self.step) for i in range(2, 5)]
                         [self.evaluate("dataset/B100", scale=i, num_step=self.step) for i in range(2, 5)]
-                        psnr = [self.evaluate("dataset/DIV2K_valid", scale=i, num_step=self.step) for i in range(2, 5)]
+                        psnr = [self.evaluate("dataset/DIV2K/DIV2K_valid", 
+                                              scale=i, num_step=self.step) for i in range(2, 5)]
                         
                         t2 = time.time()
                         remain_step = cfg.max_steps - self.step

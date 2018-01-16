@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import importlib
 import argparse
 import numpy as np
@@ -36,6 +37,7 @@ def sample(net, dataset, cfg):
     scale = cfg.scale
     for step, (hr, lr, name) in enumerate(dataset):
         if "DIV2K" in dataset.name:
+            t1 = time.time()
             h, w = lr.size()[1:]
             h_half, w_half = int(h/2), int(w/2)
             h_chop, w_chop = h_half + cfg.shave, w_half + cfg.shave
@@ -58,10 +60,14 @@ def sample(net, dataset, cfg):
             result[:, h_half:h, 0:w_half].copy_(sr[2, :, h_chop-h+h_half:h_chop, 0:w_half])
             result[:, h_half:h, w_half:w].copy_(sr[3, :, h_chop-h+h_half:h_chop, w_chop-w+w_half:w_chop])
             sr = result
+            t2 = time.time()
         else:
+            t1 = time.time()
             lr = Variable(lr.unsqueeze(0), volatile=True).cuda()
             sr = net(lr, cfg.scale).data[0]
-
+            lr = lr.data[0]
+            t2 = time.time()
+        
         model_name = cfg.ckpt_path.split(".")[0].split("/")[-1]
         sr_dir = os.path.join(cfg.sample_dir,
                               model_name, 
@@ -80,12 +86,13 @@ def sample(net, dataset, cfg):
         if not os.path.exists(hr_dir):
             os.makedirs(hr_dir)
 
-        sr_im_path = os.path.join(sr_dir, "{}".format(name))
+        sr_im_path = os.path.join(sr_dir, "{}".format(name.replace("HR", "SR")))
         hr_im_path = os.path.join(hr_dir, "{}".format(name))
 
         save_image(sr, sr_im_path)
-        save_image(hr, hr_im_path)
-        print("Saved {}".format(sr_im_path))
+        # save_image(hr, hr_im_path)
+        print("Saved {} ({}x{} -> {}x{}, {:.3f}s)"
+            .format(sr_im_path, lr.shape[1], lr.shape[2], sr.shape[1], sr.shape[2], t2-t1))
 
 
 def main(cfg):

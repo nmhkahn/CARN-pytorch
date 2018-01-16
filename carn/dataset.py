@@ -49,10 +49,10 @@ class TrainDataset(data.Dataset):
         # perform multi-scale training
         if scale == 0:
             self.scale = [2, 3, 4]
-            self.lr = [[v[:] for v in h5f["x{}".format(i)].values()] for i in self.scale]
+            self.lr = [[v[:] for v in h5f["X{}".format(i)].values()] for i in self.scale]
         else:
             self.scale = [scale]
-            self.lr = [[v[:] for v in h5f["x{}".format(scale)].values()]]
+            self.lr = [[v[:] for v in h5f["X{}".format(scale)].values()]]
         
         h5f.close()
 
@@ -81,10 +81,11 @@ class TestDataset(data.Dataset):
         self.scale = scale
         
         if "DIV" in self.name:
-            self.hr = glob.glob(os.path.join(dirname, "HR/*.png"))
-            self.lr = glob.glob(os.path.join(dirname, "x{}/*.png".format(scale)))
+            self.hr = glob.glob(os.path.join("{}_HR".format(dirname), "*.png"))
+            self.lr = glob.glob(os.path.join("{}_LR_bicubic".format(dirname), 
+                                             "X{}/*.png".format(scale)))
         else:
-            all_files = glob.glob(os.path.join(dirname, "image_SRF_{}/*.png".format(scale)))
+            all_files = glob.glob(os.path.join(dirname, "x{}/*.png".format(scale)))
             self.hr = [name for name in all_files if "HR" in name]
             self.lr = [name for name in all_files if "LR" in name]
 
