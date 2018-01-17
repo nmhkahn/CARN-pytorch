@@ -5,7 +5,7 @@ import scipy.misc as misc
 import numpy as np
 
 dataset_dir = "DIV2K/"
-dataset_type = "valid"
+dataset_type = "train"
 
 f = h5py.File("DIV2K_{}.h5".format(dataset_type), "w")
 dt = h5py.special_dtype(vlen=np.dtype('uint8'))
