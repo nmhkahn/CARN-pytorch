@@ -14,7 +14,7 @@ The Cascading Residual Network (CARN) and CARN-Mobile (CARN-M) are super-resolut
 - importlib
 
 ### Dataset
-We use DIV2K dataset for training and test on Set5, Set14, B100 and Urban100 dataset. Here are following steps to prepare both datasets.
+We use DIV2K dataset for training and test on Set5, Set14, B100 and Urban100 dataset. Here are following steps to prepare datasets.
 
 1. Download [DIV2K](https://data.vision.ee.ethz.ch/cvl/DIV2K) and unzip on `dataset` directory as below.
   ```
@@ -25,11 +25,11 @@ We use DIV2K dataset for training and test on Set5, Set14, B100 and Urban100 dat
       ├── DIV2K_valid_HR
       └── DIV2K_valid_LR_bicubic
   ```
-2. To accelerate training, we first convert training images as h5 format as:
+2. To accelerate training, we first convert training images as h5 format. Simply run below code (h5py module has to be installed).
 ```shell
 $ cd datasets && python div2h5.py
 ```
-3. Other benchmark datasets can be downloaded in [here](https://drive.google.com/file/d/1JJFKMRdOF4DqZd1kwDRrPKvSKnmqWjed/view?usp=sharing). Same to DIV2K, place all the datasets in `dataset` directory.
+3. Other benchmark datasets can be downloaded in [here](https://drive.google.com/file/d/1JJFKMRdOF4DqZd1kwDRrPKvSKnmqWjed/view?usp=sharing). Same as DIV2K, place all the datasets in `dataset` directory.
 
 ### Test Pre-trained Models
 We provide pre-trained models in `checkpoint` directory. To test CARN on benchmark dataset:
@@ -50,7 +50,8 @@ $ python carn/sample.py --model=carn_m \
                         --ckpt_path=checkpoint/carn.pth \
                         --sample_dir=sample \
 ```
-To test on DIV2K dataset, place `test_data_dir` argument as `dataset/DIV2K/DIV2K_valid`, and `dataset/other` for other datasets.
+To test on DIV2K dataset, set `test_data_dir` argument as `dataset/DIV2K/DIV2K_valid`, and `dataset/other_dataset_dir` for other datasets.
+
 Or, we also provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100) in [here](https://drive.google.com/file/d/1RGio4rgo1f8vjUJlp891gRqY8Fov40hD/view?usp=sharing).
 
 ### Training Models
@@ -77,13 +78,13 @@ python carn/train.py --patch_size=48 \
                      --scale=0 \
                      --num_gpu=1
 ```
-In the `--scale` argument, [2, 3, 4] is for single-scale training and 0 for multi-scale learning. `--group` represents group size of group convolution that in efficient residual block. `--reduce_upsample` means use 1x1 convolution instead of 3x3 in the upsampling layer.
+In the `--scale` argument, [2, 3, 4] is for single-scale training and 0 for multi-scale learning. `--group` represents group size of group convolution inside of efficient residual block. `--reduce_upsample` means use 1x1 convolution instead of 3x3 in the upsampling layer.
 
 ### Results
 Quantitative evaluation of state-of-the-art SR algorithms
-![sota](assets/sota.png)
+<img src="assets/sota.png" width="70%">
 
 Visual qualitative comparison on 4× scale datasets.
-![result](assets/result.png)
+<img src="assets/result.png" width="70%">
 
 ### Citation
