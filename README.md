@@ -47,7 +47,7 @@ $ python carn/sample.py --model=carn_m \
                         --scale=4 \
                         --group=4 \
                         --reduce_upsample \
-                        --ckpt_path=checkpoint/carn.pth \
+                        --ckpt_path=checkpoint/carn_m.pth \
                         --sample_dir=sample \
 ```
 To test on DIV2K dataset, set `test_data_dir` argument as `dataset/DIV2K/DIV2K_valid`, and `dataset/other_dataset_dir` for other datasets.
@@ -55,11 +55,11 @@ To test on DIV2K dataset, set `test_data_dir` argument as `dataset/DIV2K/DIV2K_v
 Or, we also provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100) in [here](https://drive.google.com/file/d/1RGio4rgo1f8vjUJlp891gRqY8Fov40hD/view?usp=sharing).
 
 ### Training Models
-Here is our default setting to train CARN and CARN-M.
+Here is our default setting to train CARN and CARN-M. Note: We only ran in TITAN X or 1080ti. If OOM error occurs, please decrease batch size.
 ```shell
 # For CARN
 python carn/train.py --patch_size=48 \
-                     --batch_size=36 \
+                     --batch_size=32 \
                      --max_steps=500000 \
                      --decay=300000 \
                      --model=carn \
@@ -68,7 +68,7 @@ python carn/train.py --patch_size=48 \
                      --num_gpu=1
 # For CARN-M
 python carn/train.py --patch_size=48 \
-                     --batch_size=36 \
+                     --batch_size=32 \
                      --max_steps=500000 \
                      --decay=300000 \
                      --model=carn_m \
