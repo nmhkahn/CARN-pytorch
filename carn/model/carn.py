@@ -5,18 +5,15 @@ import model.ops as ops
 class Block(nn.Module):
     def __init__(self, 
                  in_channels, out_channels,
-                 group=1,
-                 act=nn.ReLU(inplace=True)):
+                 group=1):
         super(Block, self).__init__()
 
         self.b1 = ops.ResidualBlock(64, 64)
         self.b2 = ops.ResidualBlock(64, 64)
         self.b3 = ops.ResidualBlock(64, 64)
-        self.c1 = ops.BasicBlock(64*2, 64, 1)
-        self.c2 = ops.BasicBlock(64*3, 64, 1)
-        self.c3 = ops.BasicBlock(64*4, 64, 1)
-
-        self.act = act
+        self.c1 = ops.BasicBlock(64*2, 64, 1, 1, 0)
+        self.c2 = ops.BasicBlock(64*3, 64, 1, 1, 0)
+        self.c3 = ops.BasicBlock(64*4, 64, 1, 1, 0)
 
     def forward(self, x):
         c0 = o0 = x
@@ -46,24 +43,20 @@ class Net(nn.Module):
 
         self.sub_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=True)
         self.add_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=False)
-
-        self.relu = nn.ReLU()
+        
         self.entry = nn.Conv2d(3, 64, 3, 1, 1)
 
         self.b1 = Block(64, 64)
         self.b2 = Block(64, 64)
         self.b3 = Block(64, 64)
-        self.c1 = ops.BasicBlock(64*2, 64, 1)
-        self.c2 = ops.BasicBlock(64*3, 64, 1)
-        self.c3 = ops.BasicBlock(64*4, 64, 1)
+        self.c1 = ops.BasicBlock(64*2, 64, 1, 1, 0)
+        self.c2 = ops.BasicBlock(64*3, 64, 1, 1, 0)
+        self.c3 = ops.BasicBlock(64*4, 64, 1, 1, 0)
         
         self.upsample = ops.UpsampleBlock(64, scale=scale, 
                                           multi_scale=multi_scale, 
                                           reduce=reduce_upsample)
-        
-        self.exit = nn.Sequential(
-            nn.Conv2d(64, 3, 3, 1, 1)
-        )
+        self.exit = nn.Conv2d(64, 3, 3, 1, 1)
                 
     def forward(self, x, scale):
         x = self.sub_mean(x)

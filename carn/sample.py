@@ -18,9 +18,9 @@ def parse_args():
     parser.add_argument("--group", type=int, default=1)
     parser.add_argument("--reduce_upsample", action="store_true", default=False)
     parser.add_argument("--sample_dir", type=str)
-    parser.add_argument("--test_data_dir", type=str, default="dataset/Set5")
+    parser.add_argument("--test_data_dir", type=str, default="dataset/Urban100")
     parser.add_argument("--cuda", action="store_true")
-    parser.add_argument("--scale", type=int, default=2)
+    parser.add_argument("--scale", type=int, default=4)
     parser.add_argument("--shave", type=int, default=20)
 
     return parser.parse_args()
@@ -101,10 +101,11 @@ def main(cfg):
                      group=cfg.group, 
                      reduce_upsample=cfg.reduce_upsample)
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
-    
+
     state_dict = torch.load(cfg.ckpt_path)
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
+        print(k)
         name = k
         # name = k[7:] # remove "module."
         new_state_dict[name] = v

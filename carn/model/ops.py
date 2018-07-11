@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-from torch.autograd import Variable
+import torch.nn.functional as F
 
 def init_weights(modules):
     pass
@@ -33,15 +33,12 @@ class MeanShift(nn.Module):
 class BasicBlock(nn.Module):
     def __init__(self,
                  in_channels, out_channels,
-                 ksize=3, dilation=1, 
+                 ksize=3, stride=1, pad=1,
                  act=nn.ReLU(inplace=True)):
         super(BasicBlock, self).__init__()
 
-        # assume input.shape == output.shape
-        pad = dilation if ksize > 1 else 0
-
         self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, ksize, 1, pad, dilation=dilation),
+            nn.Conv2d(in_channels, out_channels, ksize, stride, pad),
             act
         )
 
@@ -55,17 +52,13 @@ class BasicBlock(nn.Module):
 class ResidualBlock(nn.Module):
     def __init__(self, 
                  in_channels, out_channels,
-                 dilation=1,
                  act=nn.ReLU(inplace=True)):
         super(ResidualBlock, self).__init__()
 
-        # assume input.shape == output.shape
-        pad = dilation
-
         self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation),
+            nn.Conv2d(in_channels, out_channels, 3, 1, 1),
             act,
-            nn.Conv2d(out_channels, out_channels, 3, 1, pad, dilation=dilation),
+            nn.Conv2d(out_channels, out_channels, 3, 1, 1),
         )
 
         self.act = act
@@ -80,17 +73,14 @@ class ResidualBlock(nn.Module):
 class EResidualBlock(nn.Module):
     def __init__(self, 
                  in_channels, out_channels,
-                 dilation=1, group=1,
+                 group=1,
                  act=nn.ReLU(inplace=True)):
         super(EResidualBlock, self).__init__()
 
-        # assume input.shape == output.shape
-        pad = dilation
-
         self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, 1, pad, dilation=dilation, groups=group),
+            nn.Conv2d(in_channels, out_channels, 3, 1, 1, groups=group),
             act,
-            nn.Conv2d(out_channels, out_channels, 3, 1, pad, dilation=dilation, groups=group),
+            nn.Conv2d(out_channels, out_channels, 3, 1, 1, groups=group),
             act,
             nn.Conv2d(out_channels, out_channels, 1, 1, 0),
         )
@@ -130,6 +120,34 @@ class UpsampleBlock(nn.Module):
         else:
             return self.up(x)
 
+class _UpsampleBlock(nn.Module):
+    def __init__(self, 
+                n_channels, scale, 
+                reduce=True, act=nn.ReLU(inplace=True)):
+        super(_UpsampleBlock, self).__init__()
+
+        modules = []
+        if scale == 2 or scale == 4 or scale == 8:
+            for _ in range(int(math.log(scale, 2))):
+                modules += [nn.Upsample(scale_factor=2)]
+                if reduce:
+                    modules += [nn.Conv2d(n_channels, n_channels, 1, 1, 0), act]
+                else:
+                    modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1), act]
+        elif scale == 3:
+            modules += [nn.Upsample(scale_factor=3)]
+            if reduce:
+                modules += [nn.Conv2d(n_channels, n_channels, 1, 1, 0), act]
+            else:
+                modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1), act]
+        
+        self.body = nn.Sequential(*modules)
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
+"""       
 
 class _UpsampleBlock(nn.Module):
     def __init__(self, n_channels, scale, reduce=True, act=nn.ReLU()):
@@ -156,3 +174,4 @@ class _UpsampleBlock(nn.Module):
     def forward(self, x):
         out = self.body(x)
         return out
+"""

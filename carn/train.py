@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import json
 import argparse
 import importlib
-from trainer import Trainer
+from solver import Solver
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -45,8 +45,8 @@ def main(cfg):
     net = importlib.import_module("model.{}".format(cfg.model)).Net
     print(json.dumps(vars(cfg), indent=4, sort_keys=True))
     
-    trainer = Trainer(net, cfg)
-    trainer.fit()
+    solver = Solver(net, cfg)
+    solver.fit()
 
 if __name__ == "__main__":
     cfg = parse_args()
