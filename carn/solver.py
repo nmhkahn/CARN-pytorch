@@ -14,12 +14,10 @@ class Solver():
     def __init__(self, model, cfg):
         if cfg.scale > 0:
             self.refiner = model(scale=cfg.scale, 
-                                 group=cfg.group, 
-                                 reduce_upsample=cfg.reduce_upsample)
+                                 group=cfg.group)
         else:
             self.refiner = model(multi_scale=True, 
-                                 group=cfg.group,
-                                 reduce_upsample=cfg.reduce_upsample)
+                                 group=cfg.group)
         
         if cfg.loss_fn in ["MSE"]: 
             self.loss_fn = nn.MSELoss()
@@ -48,12 +46,14 @@ class Solver():
         self.cfg = cfg
         self.step = 0
         
-        self.writer = SummaryWriter()
+        self.writer = SummaryWriter(log_dir=os.path.join("runs", cfg.ckpt_name))
         if cfg.verbose:
             num_params = 0
             for param in self.refiner.parameters():
                 num_params += param.nelement()
             print("# of params:", num_params)
+
+        os.makedirs(cfg.ckpt_dir, exist_ok=True)
 
     def fit(self):
         cfg = self.cfg

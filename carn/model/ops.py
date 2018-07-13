@@ -97,15 +97,15 @@ class EResidualBlock(nn.Module):
 class UpsampleBlock(nn.Module):
     def __init__(self, 
                  n_channels, scale, multi_scale, 
-                 reduce=True, act=nn.ReLU(inplace=True)):
+                 group=1, act=nn.ReLU(inplace=True)):
         super(UpsampleBlock, self).__init__()
 
         if multi_scale:
-            self.up2 = _UpsampleBlock(n_channels, scale=2, reduce=reduce, act=act)
-            self.up3 = _UpsampleBlock(n_channels, scale=3, reduce=reduce, act=act)
-            self.up4 = _UpsampleBlock(n_channels, scale=4, reduce=reduce, act=act)
+            self.up2 = _UpsampleBlock(n_channels, scale=2, group=group, act=act)
+            self.up3 = _UpsampleBlock(n_channels, scale=3, group=group, act=act)
+            self.up4 = _UpsampleBlock(n_channels, scale=4, group=group, act=act)
         else:
-            self.up =  _UpsampleBlock(n_channels, scale=scale, reduce=reduce, act=act)
+            self.up =  _UpsampleBlock(n_channels, scale=scale, group=group, act=act)
 
         self.multi_scale = multi_scale
 
@@ -123,23 +123,17 @@ class UpsampleBlock(nn.Module):
 class _UpsampleBlock(nn.Module):
     def __init__(self, 
                 n_channels, scale, 
-                reduce=True, act=nn.ReLU(inplace=True)):
+                group=1, act=nn.ReLU(inplace=True)):
         super(_UpsampleBlock, self).__init__()
 
         modules = []
         if scale == 2 or scale == 4 or scale == 8:
             for _ in range(int(math.log(scale, 2))):
                 modules += [nn.Upsample(scale_factor=2)]
-                if reduce:
-                    modules += [nn.Conv2d(n_channels, n_channels, 1, 1, 0), act]
-                else:
-                    modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1), act]
+                modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1, groups=group), act]
         elif scale == 3:
             modules += [nn.Upsample(scale_factor=3)]
-            if reduce:
-                modules += [nn.Conv2d(n_channels, n_channels, 1, 1, 0), act]
-            else:
-                modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1), act]
+            modules += [nn.Conv2d(n_channels, n_channels, 3, 1, 1, groups=group), act]
         
         self.body = nn.Sequential(*modules)
         init_weights(self.modules)
@@ -147,31 +141,3 @@ class _UpsampleBlock(nn.Module):
     def forward(self, x):
         out = self.body(x)
         return out
-"""       
-
-class _UpsampleBlock(nn.Module):
-    def __init__(self, n_channels, scale, reduce=True, act=nn.ReLU()):
-        super(_UpsampleBlock, self).__init__()
-
-        modules = []
-        if scale == 2 or scale == 4 or scale == 8:
-            for _ in range(int(math.log(scale, 2))):
-                if reduce:
-                    modules += [nn.Conv2d(n_channels, 4*n_channels, 1, 1, 0), act]
-                else:
-                    modules += [nn.Conv2d(n_channels, 4*n_channels, 3, 1, 1), act]
-                modules += [nn.PixelShuffle(2)]
-        elif scale == 3:
-            if reduce:
-                modules += [nn.Conv2d(n_channels, 9*n_channels, 1, 1, 0), act]
-            else:
-                modules += [nn.Conv2d(n_channels, 9*n_channels, 3, 1, 1), act]
-            modules += [nn.PixelShuffle(3)]
-        self.body = nn.Sequential(*modules)
-
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x)
-        return out
-"""

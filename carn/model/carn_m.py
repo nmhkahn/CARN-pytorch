@@ -40,7 +40,6 @@ class Net(nn.Module):
         
         scale = kwargs.get("scale")
         multi_scale = kwargs.get("multi_scale")
-        reduce_upsample = kwargs.get("reduce_upsample", False)
         group = kwargs.get("group", 1)
 
         self.sub_mean = ops.MeanShift((0.4488, 0.4371, 0.4040), sub=True)
@@ -56,8 +55,8 @@ class Net(nn.Module):
         self.c3 = ops.BasicBlock(64*4, 64, 1, 1, 0)
         
         self.upsample = ops.UpsampleBlock(64, scale=scale, 
-                                          multi_scale=multi_scale, 
-                                          reduce=reduce_upsample)
+                                          multi_scale=multi_scale,
+                                          group=group)
         self.exit = nn.Conv2d(64, 3, 3, 1, 1)
                 
     def forward(self, x, scale):
