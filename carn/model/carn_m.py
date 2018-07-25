@@ -5,16 +5,13 @@ import model.ops as ops
 class Block(nn.Module):
     def __init__(self, 
                  in_channels, out_channels,
-                 group=1,
-                 act=nn.ReLU(inplace=True)):
+                 group=1):
         super(Block, self).__init__()
 
         self.b1 = ops.EResidualBlock(64, 64, group=group)
         self.c1 = ops.BasicBlock(64*2, 64, 1, 1, 0)
         self.c2 = ops.BasicBlock(64*3, 64, 1, 1, 0)
         self.c3 = ops.BasicBlock(64*4, 64, 1, 1, 0)
-
-        self.act = act
 
     def forward(self, x):
         c0 = o0 = x
