@@ -88,7 +88,7 @@ In the `--scale` argument, [2, 3, 4] is for single-scale training and 0 for mult
 ### Citation
 ```
 @article{ahn2018fast,
-  title={Fast, Accurate and, Lightweight Super-Resolution with Cascading Residual Network},
+  title={Fast, Accurate, and Lightweight Super-Resolution with Cascading Residual Network},
   author={Ahn, Namhyuk and Kang, Byungkon and Sohn, Kyung-Ah},
   journal={arXiv preprint arXiv:1803.08664},
   year={2018}
