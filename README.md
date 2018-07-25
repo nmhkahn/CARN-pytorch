@@ -3,7 +3,7 @@
 ECCV 2018. (accepted)<br>
 Namhyuk Ahn, Byungkon Kang, Kyung-Ah Sohn [[arXiv]](https://arxiv.org/abs/1803.08664)
 
-<img src="assets/benchmark.png" width="70%">
+<img src="assets/benchmark.png">
 
 ### Abstract
 In recent years, deep learning methods have been successfully applied to single-image super-resolution tasks. Despite their great performances, deep learning methods cannot be easily applied to real-world applications due to the requirement of heavy computation. In this paper, we address this issue by proposing an accurate and lightweight deep learning model for image super-resolution. In detail, we design an architecture that implements a cascading mechanism upon a residual network. We also present a variant model of the proposed cascading residual network to further improve efficiency. Our extensive experiments show that even with much fewer parameters and operations, our models achieve performance comparable to that of state-of-the-art methods.
@@ -82,10 +82,7 @@ $ python carn/train.py --patch_size 64 \
 In the `--scale` argument, [2, 3, 4] is for single-scale training and 0 for multi-scale learning. `--group` represents group size of group convolution. The differences from previous version are: 1) we increase batch size and patch size to 64 and 64. 2) Instead of using `reduce_upsample` argument which replace 3x3 conv of the upsample block to 1x1, we use group conovlution as same way to the efficient residual block.
 
 ### Results
-Quantitative evaluation of state-of-the-art SR algorithms
 <img src="assets/table.png" width="70%">
-
-Visual qualitative comparison on 4× scale datasets.
 <img src="assets/visual.png" width="70%">
 
 ### Citation
