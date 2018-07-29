@@ -1,7 +1,6 @@
 
 # Fast, Accurate, and Lightweight Super-Resolution with Cascading Residual Network
-European Conference on Computer Vision (ECCV), 2018<br>
-Namhyuk Ahn, Byungkon Kang, Kyung-Ah Sohn [[arXiv]](https://arxiv.org/abs/1803.08664)
+Namhyuk Ahn, Byungkon Kang, Kyung-Ah Sohn. European Conference on Computer Vision (ECCV), 2018. [[arXiv]](https://arxiv.org/abs/1803.08664)
 
 <img src="assets/benchmark.png">
 
