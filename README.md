@@ -1,4 +1,3 @@
-
 # Fast, Accurate, and Lightweight Super-Resolution with Cascading Residual Network
 Namhyuk Ahn, Byungkon Kang, Kyung-Ah Sohn. European Conference on Computer Vision (ECCV), 2018. [[arXiv]](https://arxiv.org/abs/1803.08664)
 
@@ -31,7 +30,7 @@ We use DIV2K dataset for training and Set5, Set14, B100 and Urban100 dataset for
 ```shell
 $ cd datasets && python div2h5.py
 ```
-3. Other benchmark datasets can be downloaded in [Google Drive](https://drive.google.com/open?id=1X2d8FXi14EqkgI_PlxLv8TGJEljOStEf). Same as DIV2K, please put all the datasets in `dataset` directory.
+3. Other benchmark datasets can be downloaded in [Google Drive](https://drive.google.com/open?id=1cGHKR-E_B3L6gFIlxhWunum30q9DKZXT). Same as DIV2K, please put all the datasets in `dataset` directory.
 
 ### Test Pretrained Models
 We provide the pretrained models in `checkpoint` directory. To test CARN on benchmark dataset:
@@ -44,14 +43,14 @@ $ python carn/sample.py --model carn \
 ```
 and for CARN-M,
 ```shell
-$ python carn/sample.py --model carn \
+$ python carn/sample.py --model carn_m \
                         --test_data_dir dataset/<dataset> \
                         --scale [2|3|4] \
                         --ckpt_path ./checkpoint/<path>.pth \
                         --sample_dir <sample_dir> \
                         --group 4
 ```
-We provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100). [Google Drive](https://drive.google.com/open?id=1SmvarO2mruF6JKui7suQhCcVt5VFw5j4)
+We provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100). [Google Drive](https://drive.google.com/open?id=1FgJ5faOvX4lk1TchZXiKOvqfxSZFkyc1)
 
 ### Training Models
 Here are our settings to train CARN and CARN-M. Note: We use two GPU to utilize large batch size, but if OOM error arise, please reduce batch size.
@@ -78,11 +77,13 @@ $ python carn/train.py --patch_size 64 \
                        --group 4 \
                        --num_gpu 2
 ```
-In the `--scale` argument, [2, 3, 4] is for single-scale training and 0 for multi-scale learning. `--group` represents group size of group convolution. The differences from previous version are: 1) we increase batch size and patch size to 64 and 64. 2) Instead of using `reduce_upsample` argument which replace 3x3 conv of the upsample block to 1x1, we use group conovlution as same way to the efficient residual block.
+In the `--scale` argument, [2, 3, 4] is for single-scale training and 0 for multi-scale learning. `--group` represents group size of group convolution. The differences from previous version are: 1) we increase batch size and patch size to 64 and 64. 2) Instead of using `reduce_upsample` argument which replace 3x3 conv of the upsample block to 1x1, we use group convolution as same way to the efficient residual block.
 
 ### Results
-<img src="assets/table.png" width="70%">
-<img src="assets/visual.png" width="70%">
+**Note:** As pointed out in [#2](https://github.com/nmhkahn/CARN-pytorch/issues/2), previous Urban100 benchmark dataset was incorrect. The issue is related to the mismatch of the HR image resolution from the original dataset in x2 and x3 scale. We correct this problem, and provided dataset and results are fixed ones.
+
+<img src="assets/table.png">
+<img src="assets/visual.png">
 
 ### Citation
 ```
