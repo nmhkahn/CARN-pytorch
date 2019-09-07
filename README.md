@@ -75,7 +75,7 @@ $ python carn/train.py --patch_size 64 \
                        --batch_size 64 \
                        --max_steps 600000 \
                        --decay 400000 \
-                       --model carn \
+                       --model carn_m \
                        --ckpt_name carn_m \
                        --ckpt_dir checkpoint/carn_m \
                        --scale 0 \
