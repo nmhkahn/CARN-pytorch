@@ -55,7 +55,7 @@ $ python carn/sample.py --model carn_m \
                         --sample_dir <sample_dir> \
                         --group 4
 ```
-We provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100). [Google Drive](https://drive.google.com/open?id=1FgJ5faOvX4lk1TchZXiKOvqfxSZFkyc1)
+We provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100). [Google Drive](https://drive.google.com/drive/folders/1R4vZMs3Adf8UlYbIzStY98qlsl5y1wxH?usp=sharing)
 
 ### Training Models
 Here are our settings to train CARN and CARN-M. Note: We use two GPU to utilize large batch size, but if OOM error arise, please reduce batch size.
