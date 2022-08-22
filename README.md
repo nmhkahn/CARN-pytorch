@@ -35,7 +35,7 @@ We use DIV2K dataset for training and Set5, Set14, B100 and Urban100 dataset for
 ```shell
 $ cd datasets && python div2h5.py
 ```
-3. Other benchmark datasets can be downloaded in [Google Drive](https://drive.google.com/drive/folders/1t2le0-Wz7GZQ4M2mJqmRamw5o4ce2AVw?usp=sharing). Same as DIV2K, please put all the datasets in `dataset` directory.
+3. Other benchmark datasets can be downloaded in [Google Drive](https://drive.google.com/file/d/1Pa3WM9vJlRmBHV9-VlcY-2j20w7CeH_N/view?usp=sharing). Same as DIV2K, please put all the datasets in `dataset` directory.
 
 ### Test Pretrained Models
 We provide the pretrained models in `checkpoint` directory. To test CARN on benchmark dataset:
@@ -55,7 +55,7 @@ $ python carn/sample.py --model carn_m \
                         --sample_dir <sample_dir> \
                         --group 4
 ```
-We provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100). [Google Drive](https://drive.google.com/drive/folders/1R4vZMs3Adf8UlYbIzStY98qlsl5y1wxH?usp=sharing)
+We provide our results on four benchmark dataset (Set5, Set14, B100 and Urban100). [Google Drive](https://drive.google.com/file/d/11FVPnJF9ZJ86j2rmp3M8f_lghnFExRvg/view?usp=sharing)
 
 ### Training Models
 Here are our settings to train CARN and CARN-M. Note: We use two GPU to utilize large batch size, but if OOM error arise, please reduce batch size.
